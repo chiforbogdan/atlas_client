@@ -158,9 +158,9 @@ atlas_coap_server_start(const char *hostname, const char *port)
 void
 atlas_coap_server_loop()
 {
-    int fd, nfds;
-    fd_set readfds;
+    int fd;
     int result;
+    fd_set readfds;
 
     fd = coap_context_get_coap_fd(ctx);
     if (fd == -1) {
@@ -168,12 +168,11 @@ atlas_coap_server_loop()
         return;
     }
 
-    FD_ZERO(&readfds);
-    FD_SET(fd, &readfds);
-    nfds = fd + 1;
-    
     while (1) {
-        result = select(nfds, &readfds, NULL, NULL, NULL);
+        FD_ZERO(&readfds);
+        FD_SET(fd, &readfds);
+        
+        result = select(fd + 1, &readfds, NULL, NULL, NULL);
         if (result > 0 && FD_ISSET(fd, &readfds)) {
             printf("Server CoAP request...\n");
             coap_run_once(ctx, COAP_RUN_NONBLOCK);
