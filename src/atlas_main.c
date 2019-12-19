@@ -1,11 +1,16 @@
 #include <stdio.h>
-#include <coap2/coap.h>
+#include "coap_server/atlas_coap_server.h"
 
 int main(int argc, char **argv)
 {
-    coap_context_t *coapSrvCtx;
+    /* Start server */
+    if (atlas_coap_server_start("127.0.0.1", "10000") != ATLAS_OK) {
+        printf("Cannot start CoAP server");
+        return -1;
+    }
 
-    coap_startup();
-
+    /* Run server main loop */
+    atlas_coap_server_loop();
+        
     return 0;
 }
