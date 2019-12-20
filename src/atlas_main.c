@@ -19,7 +19,7 @@ int main(int argc, char **argv)
     /* Run server main loop */
     atlas_coap_server_loop();
 
-    ATLAS_LOGGER_INFO("Starting ATLAS IoT client...");
+    ATLAS_LOGGER_INFO("Stopping ATLAS IoT client...");
     
     atlas_log_close();
 
