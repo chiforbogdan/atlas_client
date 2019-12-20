@@ -1,4 +1,3 @@
-#include "atlas_coap_server.h"
 #include <stdio.h>
 #include <coap2/coap.h> 
 #include <sys/types.h>
@@ -7,6 +6,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include "atlas_coap_server.h"
+#include "../logger/atlas_logger.h"
 
 #define ATLAS_COAP_DTLS_NOT_SUPPORTED_ERR_STRING "CoAP DTLS is not supported"
 #define ATLAS_COAP_DTLS_SRV_ERR_STRING "Cannot start CoAP server"
@@ -164,7 +165,7 @@ atlas_coap_server_loop()
 
     fd = coap_context_get_coap_fd(ctx);
     if (fd == -1) {
-        printf("Cannot get COAP FD\n");
+        ATLAS_LOGGER_INFO("Cannot get CoAP file descriptor");
         return;
     }
 
@@ -174,7 +175,7 @@ atlas_coap_server_loop()
         
         result = select(fd + 1, &readfds, NULL, NULL, NULL);
         if (result > 0 && FD_ISSET(fd, &readfds)) {
-            printf("Server CoAP request...\n");
+            ATLAS_LOGGER_DEBUG("Serving CoAP request...");
             coap_run_once(ctx, COAP_RUN_NONBLOCK);
         }
     }

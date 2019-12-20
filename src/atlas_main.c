@@ -1,16 +1,27 @@
 #include <stdio.h>
 #include "coap_server/atlas_coap_server.h"
+#include "logger/atlas_logger.h"
 
 int main(int argc, char **argv)
 {
+    atlas_log_init();
+
+    ATLAS_LOGGER_INFO("Starting ATLAS IoT client...");
+
     /* Start server */
     if (atlas_coap_server_start("127.0.0.1", "10000") != ATLAS_OK) {
-        printf("Cannot start CoAP server");
+        ATLAS_LOGGER_INFO("Cannot start CoAP server");
         return -1;
     }
 
+    ATLAS_LOGGER_INFO("CoAP server started");
+
     /* Run server main loop */
     atlas_coap_server_loop();
-        
+
+    ATLAS_LOGGER_INFO("Starting ATLAS IoT client...");
+    
+    atlas_log_close();
+
     return 0;
 }
