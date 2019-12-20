@@ -8,6 +8,7 @@
 #include <netdb.h>
 #include "atlas_coap_server.h"
 #include "../logger/atlas_logger.h"
+#include "../scheduler/atlas_scheduler.h"
 
 #define ATLAS_COAP_DTLS_NOT_SUPPORTED_ERR_STRING "CoAP DTLS is not supported"
 #define ATLAS_COAP_DTLS_SRV_ERR_STRING "Cannot start CoAP server"
@@ -19,6 +20,7 @@ static ssize_t keyLen = 0;
 
 /* CoAP server context */
 static coap_context_t *ctx;
+static int fd;
 
 static int
 set_dtls_psk(coap_context_t *ctx)
@@ -139,6 +141,14 @@ init_resources(coap_context_t *ctx)
     coap_add_resource(ctx, resource);
 }
 
+static void
+atlas_coap_server_sched_callback(int fd)
+{ 
+    ATLAS_LOGGER_DEBUG("Serving CoAP request...");
+    
+    coap_run_once(ctx, COAP_RUN_NONBLOCK);
+} 
+
 atlas_status_t
 atlas_coap_server_start(const char *hostname, const char *port)
 {
@@ -153,31 +163,15 @@ atlas_coap_server_start(const char *hostname, const char *port)
     
     init_resources(ctx);
 
-    return ATLAS_OK;
-}
-
-void
-atlas_coap_server_loop()
-{
-    int fd;
-    int result;
-    fd_set readfds;
-
     fd = coap_context_get_coap_fd(ctx);
     if (fd == -1) {
         ATLAS_LOGGER_INFO("Cannot get CoAP file descriptor");
-        return;
+        return ATLAS_GENERAL_ERR;
     }
 
-    while (1) {
-        FD_ZERO(&readfds);
-        FD_SET(fd, &readfds);
-        
-        result = select(fd + 1, &readfds, NULL, NULL, NULL);
-        if (result > 0 && FD_ISSET(fd, &readfds)) {
-            ATLAS_LOGGER_DEBUG("Serving CoAP request...");
-            coap_run_once(ctx, COAP_RUN_NONBLOCK);
-        }
-    }
+    /* Schedule CoAP server */
+    atlas_sched_add_entry(fd, atlas_coap_server_sched_callback);
+
+    return ATLAS_OK;
 }
 
