@@ -131,7 +131,7 @@ get_index_handler(coap_context_t *ctx,
 }
 
 static void
-init_resources(coap_context_t *ctx)
+init_default_resources(coap_context_t *ctx)
 {
     coap_resource_t *resource;
 
@@ -161,7 +161,7 @@ atlas_coap_server_start(const char *hostname, const char *port)
     
     ctx = get_context(hostname, port);
     
-    init_resources(ctx);
+    init_default_resources(ctx);
 
     fd = coap_context_get_coap_fd(ctx);
     if (fd == -1) {

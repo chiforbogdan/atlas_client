@@ -11,7 +11,7 @@ include_directories(include)
 include_directories(${COAP_INCLUDE_DIRS})
 
 # Atlas client files
-file(GLOB SOURCES "src/*.c" "src/coap_server/*.c" "src/logger/*.c" "src/scheduler/*.c" "src/alarm/*.c")
+file(GLOB SOURCES "src/*.c" "src/coap/*.c" "src/logger/*.c" "src/scheduler/*.c" "src/alarm/*.c")
 
 link_directories(${COAP_LIBRARY_DIRS})
 add_executable(${PROJECT_NAME} ${SOURCES})
