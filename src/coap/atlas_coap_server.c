@@ -17,8 +17,11 @@
 
 typedef struct _atlas_coap_server_listener
 {
+    /* CoAP resource */
     coap_resource_t *resource;
+    /* High layer application callback */
     atlas_coap_server_cb_t callback;
+    /* Next pointer in list */
     struct _atlas_coap_server_listener *next;
 } atlas_coap_server_listener_t;
 
@@ -30,7 +33,7 @@ static ssize_t keyLen = 0;
 static coap_context_t *ctx;
 static int fd;
 
-static atlas_coap_server_listener_t *server_listeners;
+static atlas_coap_server_listener_t *server_listeners[ATLAS_COAP_METHOD_MAX];
 
 static int
 set_dtls_psk(coap_context_t *ctx)
@@ -179,20 +182,21 @@ atlas_coap_get_method(atlas_coap_method_t method)
 }
 
 static void
-get_index_handler(coap_context_t *ctx,
-                  struct coap_resource_t *resource,
-                  coap_session_t *session,
-                  coap_pdu_t *request,
-                  coap_binary_t *token,
-                  coap_string_t *query,
-                  coap_pdu_t *response)
+payload_handler(coap_context_t *ctx,
+                struct coap_resource_t *resource,
+                coap_session_t *session,
+                coap_pdu_t *request,
+                coap_binary_t *token,
+                coap_string_t *query,
+                coap_pdu_t *response,
+		atlas_coap_server_listener_t *listener)
 {
 
     uint8_t *payload = NULL;
     uint16_t payload_len = 0;
-    atlas_coap_server_listener_t *listener = server_listeners;
     coap_string_t *coap_uri_path;
     char *uri_path;
+    atlas_coap_response_t resp_code;
 
     coap_uri_path = coap_get_uri_path(request);
     if (!coap_uri_path) {
@@ -211,16 +215,15 @@ get_index_handler(coap_context_t *ctx,
         goto RET;
     }
 
-    listener->callback(uri_path, &payload, &payload_len);
-
-    if (!payload || !payload_len) {
-        ATLAS_LOGGER_ERROR("Drop CoAP request: invalid payload received from the application layer");
-        goto RET;
-    }
-
-    coap_add_data_blocked_response(resource, session, request, response, token,
-                                   COAP_MEDIATYPE_TEXT_PLAIN, 0x2ffff,
-                                   payload_len, payload);
+    /* Add response code */
+    resp_code = listener->callback(uri_path, &payload, &payload_len);
+    response->code = COAP_RESPONSE_CODE(resp_code);
+    
+    /* Add payload if required */
+    if (resp_code == ATLAS_COAP_RESP_OK && payload && payload_len)
+        coap_add_data_blocked_response(resource, session, request, response, token,
+                                       COAP_MEDIATYPE_TEXT_PLAIN, 0x2ffff,
+                                       payload_len, payload);
 
     ATLAS_LOGGER_DEBUG("CoAP server response is sent");
 
@@ -228,6 +231,76 @@ RET:
     free(uri_path);
     free(payload);
 }
+
+
+static void
+get_handler(coap_context_t *ctx,
+            struct coap_resource_t *resource,
+            coap_session_t *session,
+            coap_pdu_t *request,
+            coap_binary_t *token,
+            coap_string_t *query,
+            coap_pdu_t *response)
+{
+    ATLAS_LOGGER_DEBUG("CoAP Server GET request");
+
+    payload_handler(ctx, resource, session, request,
+                    token, query, response,
+                    server_listeners[ATLAS_COAP_METHOD_GET]);
+
+}
+
+static void
+post_handler(coap_context_t *ctx,
+             struct coap_resource_t *resource,
+             coap_session_t *session,
+             coap_pdu_t *request,
+             coap_binary_t *token,
+             coap_string_t *query,
+             coap_pdu_t *response)
+{
+    ATLAS_LOGGER_DEBUG("CoAP Server POST request");
+
+    payload_handler(ctx, resource, session, request,
+                    token, query, response,
+                    server_listeners[ATLAS_COAP_METHOD_POST]);
+
+}
+
+static void
+put_handler(coap_context_t *ctx,
+            struct coap_resource_t *resource,
+            coap_session_t *session,
+            coap_pdu_t *request,
+            coap_binary_t *token,
+            coap_string_t *query,
+            coap_pdu_t *response)
+{
+    ATLAS_LOGGER_DEBUG("CoAP Server POST request");
+
+    payload_handler(ctx, resource, session, request,
+                    token, query, response,
+                    server_listeners[ATLAS_COAP_METHOD_PUT]);
+
+}
+
+static void
+delete_handler(coap_context_t *ctx,
+               struct coap_resource_t *resource,
+               coap_session_t *session,
+               coap_pdu_t *request,
+               coap_binary_t *token,
+               coap_string_t *query,
+               coap_pdu_t *response)
+{
+    ATLAS_LOGGER_DEBUG("CoAP Server POST request");
+
+    payload_handler(ctx, resource, session, request,
+                    token, query, response,
+                    server_listeners[ATLAS_COAP_METHOD_DELETE]);
+
+}
+
 
 atlas_status_t
 atlas_coap_server_start(const char *hostname, const char *port)
@@ -270,7 +343,15 @@ atlas_coap_server_add_resource(const char *uri_path, atlas_coap_method_t method,
     if (!resource)
         return ATLAS_GENERAL_ERR;
 
-    coap_register_handler(resource, atlas_coap_get_method(method), get_index_handler);
+    if (method == ATLAS_COAP_METHOD_GET)
+        coap_register_handler(resource, atlas_coap_get_method(method), get_handler);
+    else if (method == ATLAS_COAP_METHOD_POST)
+        coap_register_handler(resource, atlas_coap_get_method(method), post_handler);
+    else if (method == ATLAS_COAP_METHOD_PUT)
+        coap_register_handler(resource, atlas_coap_get_method(method), put_handler);
+    else if (method == ATLAS_COAP_METHOD_DELETE)
+        coap_register_handler(resource, atlas_coap_get_method(method), delete_handler);
+
     coap_add_resource(ctx, resource);
 
     listener = (atlas_coap_server_listener_t *) malloc(sizeof(atlas_coap_server_listener_t));
@@ -278,10 +359,10 @@ atlas_coap_server_add_resource(const char *uri_path, atlas_coap_method_t method,
     listener->callback = cb;
     listener->next = NULL;
 
-    if (!server_listeners)
-        server_listeners = listener;
+    if (!server_listeners[method])
+        server_listeners[method] = listener;
     else {
-        p = server_listeners;
+        p = server_listeners[method];
 	while (p->next) p = p->next;
 
 	p->next = listener;

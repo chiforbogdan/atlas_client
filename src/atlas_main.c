@@ -3,6 +3,7 @@
 #include "logger/atlas_logger.h"
 #include "scheduler/atlas_scheduler.h"
 #include "alarm/atlas_alarm.h"
+#include "coap/atlas_coap_response.h"
 
 int main(int argc, char **argv)
 {

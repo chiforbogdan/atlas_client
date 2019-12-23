@@ -39,7 +39,7 @@ atlas_sched_add_entry(int fd, atlas_sched_cb_t cb)
 void
 atlas_sched_loop()
 {
-    atlas_sched_entry_t *ent;
+    atlas_sched_entry_t *ent, *ent_next;
     int result, max_fd;
     fd_set readfds;
 
@@ -55,9 +55,12 @@ atlas_sched_loop()
 
         result = select(max_fd + 1, &readfds, NULL, NULL, NULL);
         if (result > 0) {
-            for (ent = sched_entry; ent; ent = ent->next)
+            for (ent = sched_entry; ent; ent = ent_next) {
+                ent_next = ent->next;
+
                 if (FD_ISSET(ent->fd, &readfds))
                     ent->callback(ent->fd);
+	    }
         }
     }
 }
