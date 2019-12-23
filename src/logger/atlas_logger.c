@@ -19,6 +19,9 @@ convert_to_syslog_severity(atlas_log_severity_t severity)
         case ATLAS_LOG_DEBUG:
             return LOG_DEBUG;
 
+        case ATLAS_LOG_ERROR:
+            return LOG_ERR;
+
         default:
             return LOG_ALERT;
     }
