@@ -28,4 +28,12 @@ atlas_status_t atlas_coap_server_start(const char *hostname, const char *port);
  */
 atlas_status_t atlas_coap_server_add_resource(const char *uri_path, atlas_coap_method_t method, atlas_coap_server_cb_t cb);
 
+/**
+ * @brief Delete CoAP resource
+ * @param[in] uri_path Resource URI path
+ * @param[in] method CoAP method
+ * @return none
+ */
+void atlas_coap_server_del_resource(const char *uri_path, atlas_coap_method_t method);
+
 #endif /* __ATLAS_COAP_SERVER_H__ */

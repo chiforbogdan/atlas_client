@@ -18,8 +18,13 @@ typedef struct _atlas_coap_server_listener
 {
     /* CoAP resource */
     coap_resource_t *resource;
+
     /* High layer application callback */
     atlas_coap_server_cb_t callback;
+    
+    /* CoAP URI path */
+    char *uri_path;
+
     /* Next pointer in list */
     struct _atlas_coap_server_listener *next;
 } atlas_coap_server_listener_t;
@@ -361,6 +366,8 @@ atlas_coap_server_add_resource(const char *uri_path, atlas_coap_method_t method,
     listener = (atlas_coap_server_listener_t *) malloc(sizeof(atlas_coap_server_listener_t));
     listener->resource = resource;
     listener->callback = cb;
+    listener->uri_path = (char *) malloc(strlen(uri_path) + 1);
+    strcpy(listener->uri_path, uri_path);
     listener->next = NULL;
 
     if (!server_listeners[method])
@@ -370,5 +377,26 @@ atlas_coap_server_add_resource(const char *uri_path, atlas_coap_method_t method,
 	while (p->next) p = p->next;
 
 	p->next = listener;
+    }
+}
+
+void
+atlas_coap_server_del_resource(const char *uri_path, atlas_coap_method_t method)
+{
+    atlas_coap_server_listener_t *p, *pp;
+
+    for (p = server_listeners[method]; p; p = p->next) {
+        if (!strcmp(p->uri_path, uri_path)) {
+	    if (p == server_listeners[method])
+                server_listeners[method] = p->next;
+	    else
+                pp->next = p->next;
+
+            ATLAS_LOGGER_DEBUG("Delete CoAP resource");
+	    coap_delete_resource(ctx, p->resource); 
+	    free(p->uri_path);
+	    free(p);
+	}
+        pp = p;
     }
 }
