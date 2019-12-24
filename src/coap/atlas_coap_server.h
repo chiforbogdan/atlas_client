@@ -7,7 +7,9 @@
 #include "atlas_coap_method.h"
 #include "atlas_coap_response.h"
 
-typedef atlas_coap_response_t (*atlas_coap_server_cb_t)(const char *uri_path, uint8_t **payload, uint16_t *payload_len);
+typedef atlas_coap_response_t (*atlas_coap_server_cb_t)(const char *uri_path, const uint8_t *req_payload, size_t req_payload_len,
+                                                        uint8_t **resp_payload, size_t *resp_payload_len);
+
 
 /**
 * @brief Start CoAP server

@@ -182,7 +182,7 @@ atlas_coap_get_method(atlas_coap_method_t method)
 }
 
 static void
-payload_handler(coap_context_t *ctx,
+process_request_handler(coap_context_t *ctx,
                 struct coap_resource_t *resource,
                 coap_session_t *session,
                 coap_pdu_t *request,
@@ -192,11 +192,16 @@ payload_handler(coap_context_t *ctx,
 		atlas_coap_server_listener_t *listener)
 {
 
-    uint8_t *payload = NULL;
-    uint16_t payload_len = 0;
+    uint8_t *resp_payload = NULL;
+    size_t resp_payload_len = 0;
     coap_string_t *coap_uri_path;
     char *uri_path;
     atlas_coap_response_t resp_code;
+    uint8_t *req_payload = NULL;
+    size_t req_payload_len = 0;
+
+    /* Get request payload if any */
+    coap_get_data(request, &req_payload_len, &req_payload);
 
     coap_uri_path = coap_get_uri_path(request);
     if (!coap_uri_path) {
@@ -216,20 +221,20 @@ payload_handler(coap_context_t *ctx,
     }
 
     /* Add response code */
-    resp_code = listener->callback(uri_path, &payload, &payload_len);
+    resp_code = listener->callback(uri_path, req_payload, req_payload_len, &resp_payload, &resp_payload_len);
     response->code = COAP_RESPONSE_CODE(resp_code);
     
     /* Add payload if required */
-    if (resp_code == ATLAS_COAP_RESP_OK && payload && payload_len)
+    if (resp_code == ATLAS_COAP_RESP_OK && resp_payload && resp_payload_len)
         coap_add_data_blocked_response(resource, session, request, response, token,
                                        COAP_MEDIATYPE_TEXT_PLAIN, 0x2ffff,
-                                       payload_len, payload);
+                                       resp_payload_len, resp_payload);
 
     ATLAS_LOGGER_DEBUG("CoAP server response is sent");
 
 RET:
     free(uri_path);
-    free(payload);
+    free(resp_payload);
 }
 
 
@@ -244,9 +249,9 @@ get_handler(coap_context_t *ctx,
 {
     ATLAS_LOGGER_DEBUG("CoAP Server GET request");
 
-    payload_handler(ctx, resource, session, request,
-                    token, query, response,
-                    server_listeners[ATLAS_COAP_METHOD_GET]);
+    process_request_handler(ctx, resource, session, request,
+                            token, query, response,
+                            server_listeners[ATLAS_COAP_METHOD_GET]);
 
 }
 
@@ -261,9 +266,9 @@ post_handler(coap_context_t *ctx,
 {
     ATLAS_LOGGER_DEBUG("CoAP Server POST request");
 
-    payload_handler(ctx, resource, session, request,
-                    token, query, response,
-                    server_listeners[ATLAS_COAP_METHOD_POST]);
+    process_request_handler(ctx, resource, session, request,
+                            token, query, response,
+                            server_listeners[ATLAS_COAP_METHOD_POST]);
 
 }
 
@@ -278,9 +283,9 @@ put_handler(coap_context_t *ctx,
 {
     ATLAS_LOGGER_DEBUG("CoAP Server POST request");
 
-    payload_handler(ctx, resource, session, request,
-                    token, query, response,
-                    server_listeners[ATLAS_COAP_METHOD_PUT]);
+    process_request_handler(ctx, resource, session, request,
+                            token, query, response,
+                            server_listeners[ATLAS_COAP_METHOD_PUT]);
 
 }
 
@@ -295,9 +300,9 @@ delete_handler(coap_context_t *ctx,
 {
     ATLAS_LOGGER_DEBUG("CoAP Server POST request");
 
-    payload_handler(ctx, resource, session, request,
-                    token, query, response,
-                    server_listeners[ATLAS_COAP_METHOD_DELETE]);
+    process_request_handler(ctx, resource, session, request,
+                            token, query, response,
+                            server_listeners[ATLAS_COAP_METHOD_DELETE]);
 
 }
 
