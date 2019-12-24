@@ -10,8 +10,7 @@
 #include "../logger/atlas_logger.h"
 #include "../scheduler/atlas_scheduler.h"
 
-#define ATLAS_COAP_DTLS_NOT_SUPPORTED_ERR_STRING "CoAP DTLS is not supported"
-#define ATLAS_COAP_DTLS_SRV_ERR_STRING "Cannot start CoAP server"
+#define ATLAS_COAP_DEFAULT_STRING "ATLAS client CoAP server"
 
 #define ATLAS_MAX_PSK_KEY_BYTES (64)
 
@@ -41,7 +40,7 @@ set_dtls_psk(coap_context_t *ctx)
     coap_dtls_spsk_t psk;
 
     if (!coap_dtls_is_supported()) {
-        printf("%s\n", ATLAS_COAP_DTLS_NOT_SUPPORTED_ERR_STRING);
+        ATLAS_LOGGER_ERROR("CoAP DTLS is not supported");
         return ATLAS_COAP_SRV_DTLS_NOT_SUPPORTED;
     }
 
@@ -80,7 +79,7 @@ get_context(const char *hostname, const char *port)
     hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST;
 
     if (getaddrinfo(hostname, port, &hints, &res) != 0) {
-        printf("%s\n", ATLAS_COAP_DTLS_SRV_ERR_STRING);
+        ATLAS_LOGGER_ERROR("Cannot start CoAP server");
         coap_free_context(ctx);
         return NULL;
     }
@@ -104,19 +103,19 @@ get_context(const char *hostname, const char *port)
 
         ep = coap_new_endpoint(ctx, &addr, COAP_PROTO_UDP);
         if (!ep) {
-            printf("Cannot open COAP UDP\n");
+            ATLAS_LOGGER_ERROR("Cannot open COAP UDP");
             continue;
         }
 
         eps = coap_new_endpoint(ctx, &addrs, COAP_PROTO_DTLS);
         if (!eps)
-            printf("Cannot open COAP DTLS\n");
+            ATLAS_LOGGER_ERROR("Cannot open COAP DTLS");
 
         break;
     }
 
     if (!r) {
-        printf("%s\n", ATLAS_COAP_DTLS_SRV_ERR_STRING);
+        ATLAS_LOGGER_ERROR("Cannot start CoAP server");
         coap_free_context(ctx);
         return NULL;
     }
@@ -135,7 +134,7 @@ get_default_index_handler(coap_context_t *ctx,
                   coap_string_t *query,
                   coap_pdu_t *response) {
  
-    const char *INDEX = "Hello world ATLAS";
+    const char *INDEX = ATLAS_COAP_DEFAULT_STRING;
 
     coap_add_data_blocked_response(resource, session, request, response, token,
                                    COAP_MEDIATYPE_TEXT_PLAIN, 0x2ffff,
