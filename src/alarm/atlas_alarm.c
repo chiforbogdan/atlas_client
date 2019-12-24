@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "atlas_alarm.h"
+#include "../logger/atlas_logger.h"
 
 #define ATLAS_1MS_TO_NS (1000000)
 #define ATLAS_1SEC_TO_MS (1000)
@@ -12,10 +13,15 @@ typedef struct _atlas_alarm_entry
 {
     /* Alarm id */
     atlas_alarm_id_t alarm_id;
+
     /* Alarm callback*/
     atlas_alarm_cb_t callback;
+
     /* Next alarm */
     struct _atlas_alarm_entry *next;
+
+    /* Indicates if the alarm should be triggered only once */
+    uint8_t run_once;
 } atlas_alarm_entry_t;
 
 static atlas_alarm_entry_t *alarm_entry;
@@ -29,7 +35,15 @@ atlas_alarm_trigger(int fd)
     for(p = alarm_entry; p; p = p->next)
         if (p->alarm_id == fd) {
             read(fd, &res, sizeof(res));
+            /* Run alarm callback */
             p->callback(p->alarm_id);
+
+            /* Cancel alarm if it should run only once */
+	    if (p->run_once) {
+                ATLAS_LOGGER_DEBUG("Alarm which runs only once will be canceled");
+                atlas_alarm_cancel(p->alarm_id);
+	    }
+
             break;
         }
 }
@@ -68,6 +82,7 @@ atlas_alarm_set(uint16_t ms, atlas_alarm_cb_t alarm_cb, uint8_t run_once)
     alarm = (atlas_alarm_entry_t *) malloc(sizeof(atlas_alarm_entry_t));
     alarm->alarm_id = fd;
     alarm->callback = alarm_cb;
+    alarm->run_once = run_once;
     alarm->next = NULL;
 
     if (!alarm_entry)
@@ -80,4 +95,28 @@ atlas_alarm_set(uint16_t ms, atlas_alarm_cb_t alarm_cb, uint8_t run_once)
     }
     
     return fd;
+}
+
+void
+atlas_alarm_cancel(atlas_alarm_id_t alarm_id)
+{
+    atlas_alarm_entry_t *p, *pp;
+
+    for(p = alarm_entry; p; p = p->next) {
+        if (p->alarm_id == alarm_id) {
+	    if (p == alarm_entry)
+                alarm_entry = p->next;
+	    else
+               pp->next = p->next;
+
+            ATLAS_LOGGER_DEBUG("Alarm is canceled");
+
+            atlas_sched_del_entry(p->alarm_id);
+
+            free(p);
+
+	    break;
+	}
+        pp = p;
+    }
 }

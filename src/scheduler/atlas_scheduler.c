@@ -1,5 +1,6 @@
 #include "atlas_scheduler.h"
 #include <stdlib.h>
+#include "../logger/atlas_logger.h"
 
 typedef struct _atlas_sched_entry
 {
@@ -35,6 +36,28 @@ atlas_sched_add_entry(int fd, atlas_sched_cb_t cb)
         p->next = ent;
     }
 }
+
+void
+atlas_sched_del_entry(int fd)
+{
+    atlas_sched_entry_t *p, *pp;
+
+    for (p = sched_entry; p; p = p->next) {
+        if (p->fd == fd) {
+            if (p == sched_entry)
+                sched_entry = p->next;
+	    else
+                pp->next = p->next;
+
+            ATLAS_LOGGER_DEBUG("Scheduler entry removed");
+	    free(p);
+
+	    break;
+	}
+	pp = p;
+    }
+}
+
 
 void
 atlas_sched_loop()

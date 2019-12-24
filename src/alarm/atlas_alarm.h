@@ -17,4 +17,11 @@ typedef void (*atlas_alarm_cb_t)(atlas_alarm_id_t);
 */
 atlas_alarm_id_t atlas_alarm_set(uint16_t ms, atlas_alarm_cb_t alarm_cb, uint8_t run_once);
 
+/**
+ * @brief Cancel alarm
+ * @param[in] alarm_id Alarm id
+ * @return none
+ */
+void atlas_alarm_cancel(atlas_alarm_id_t alarm_id);
+
 #endif /* __ATLAS_ALARM_H__ */

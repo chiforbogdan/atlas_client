@@ -5,6 +5,15 @@
 #include "alarm/atlas_alarm.h"
 #include "coap/atlas_coap_response.h"
 
+void test(atlas_alarm_id_t id)
+{
+    static int c = 0;
+    c++;
+    if (c == 10)
+        atlas_alarm_cancel(id);
+    printf("Alarm!\n");
+}
+
 int main(int argc, char **argv)
 {
     atlas_log_init();
@@ -18,6 +27,8 @@ int main(int argc, char **argv)
     }
 
     ATLAS_LOGGER_INFO("CoAP server started");
+
+    atlas_alarm_set(3000, test, 1);
 
     /* Run scheduler main loop */
     atlas_sched_loop();
