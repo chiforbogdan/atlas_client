@@ -66,6 +66,8 @@ atlas_sched_loop()
     int result, max_fd;
     fd_set readfds;
 
+    ATLAS_LOGGER_DEBUG("Starting scheduler main loop...");
+
     while (1) {
         FD_ZERO(&readfds);
         max_fd = 0;

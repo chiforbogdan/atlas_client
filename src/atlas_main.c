@@ -4,6 +4,11 @@
 #include "scheduler/atlas_scheduler.h"
 #include "alarm/atlas_alarm.h"
 #include "coap/atlas_coap_response.h"
+#include "coap/atlas_coap_client.h"
+
+void test (int status, const uint8_t *resp_payload, size_t resp_payload_len)
+{
+}
 
 int main(int argc, char **argv)
 {
@@ -18,6 +23,10 @@ int main(int argc, char **argv)
     }
 
     ATLAS_LOGGER_INFO("CoAP server started");
+
+    uint8_t p[] = {1,2,3,4,5,6,7,8};
+
+    atlas_coap_client_request("127.0.0.1", 5683, p, sizeof(p), test);
 
     /* Run scheduler main loop */
     atlas_sched_loop();
