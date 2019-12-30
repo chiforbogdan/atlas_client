@@ -57,6 +57,8 @@ set_dtls_psk(coap_context_t *ctx)
 
     /* Set PSK */
     coap_context_set_psk2(ctx, &psk);
+
+    return 0;
 }
 
 static coap_context_t*
@@ -65,7 +67,6 @@ get_context(const char *hostname, const char *port)
     struct addrinfo hints;
     struct addrinfo *res, *r;
     coap_context_t *ctx = NULL;
-    int fd;
     coap_address_t addr, addrs;
     uint16_t tmp;
     coap_endpoint_t *ep, *eps;
@@ -180,6 +181,9 @@ atlas_coap_get_method(atlas_coap_method_t method)
 
 	case ATLAS_COAP_METHOD_DELETE:
             return COAP_REQUEST_DELETE;
+
+        default:
+	    return COAP_REQUEST_GET;
     }
 
     return COAP_REQUEST_GET;
@@ -378,6 +382,8 @@ atlas_coap_server_add_resource(const char *uri_path, atlas_coap_method_t method,
 
 	p->next = listener;
     }
+
+    return ATLAS_OK;
 }
 
 void

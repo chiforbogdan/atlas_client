@@ -19,4 +19,6 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 #Add CoAP library
 target_link_libraries(${PROJECT_NAME} ${COAP_LIBRARIES})
 
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall)
+
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)
