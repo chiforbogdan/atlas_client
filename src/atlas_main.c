@@ -10,6 +10,8 @@ void test (atlas_coap_response_t resp_status, const uint8_t *resp_payload, size_
 {
     int i;
 
+    printf("status %d\n", resp_status);
+
     if (resp_payload && resp_payload_len)
     for (i = 0; i < resp_payload_len; i++)
         printf("%c", resp_payload[i]);

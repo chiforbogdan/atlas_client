@@ -29,6 +29,9 @@ typedef struct _atlas_coap_client_req
     /* Higher layer application callback */
     atlas_coap_client_cb_t callback;
 
+    /* Indicates if the entry is dirty and should be deleted */
+    uint8_t dirty;
+
     /* Next entry */
     struct _atlas_coap_client_req *next;
 
@@ -132,6 +135,15 @@ nack_handler(coap_context_t *context, coap_session_t *session,
  }
 
 
+static int
+validate_token(coap_pdu_t *received, uint32_t token)
+{
+    if (received->token_length != sizeof(token))
+        return 0;
+
+    return memcmp(received->token, (uint8_t*) &token, sizeof(token)) == 0;
+}
+
 static void
 message_handler(struct coap_context_t *ctx,
                 coap_session_t *session,
@@ -156,7 +168,21 @@ message_handler(struct coap_context_t *ctx,
         return;
     }
     
-    /* FIXME check token */
+    /* Validate token */
+    if (!validate_token(received, ent->token)) {
+        ATLAS_LOGGER_INFO("CoAP client: received CoAP response with invalid token");
+
+        if ((received->type == COAP_MESSAGE_CON || received->type == COAP_MESSAGE_NON) &&
+            !sent)
+            coap_send_rst(session, received);
+        
+	return;
+    }
+
+    /* If token is valid, then the request entry can be deleted */
+    ent->dirty = 1;
+
+
     if (received->type == COAP_MESSAGE_RST) {
         ATLAS_LOGGER_INFO("CoAP client: got RST as response");
         ent->callback(ATLAS_COAP_RESP_RESET, NULL, 0);
@@ -185,22 +211,26 @@ coap_client_sched_callback(int fd)
 
     for (p = req_entry; p; p = p->next) {
         if (p->coap_fd == fd) {
-	    coap_run_once(p->ctx, COAP_RUN_NONBLOCK);
-            
-            if (p == req_entry)
-                req_entry = req_entry->next;
-            else
-                pp->next = p->next;
 
-            atlas_sched_del_entry(p->coap_fd);
-	    coap_session_release(p->session);
-	    coap_free_context(p->ctx);
-	    free(p);
+            coap_run_once(p->ctx, COAP_RUN_NONBLOCK);
 
+            /* If entry is dirty, then it can be deleted */
+	    if (p->dirty) {    
+                if (p == req_entry)
+                    req_entry = req_entry->next;
+                else
+                    pp->next = p->next;
+
+                atlas_sched_del_entry(p->coap_fd);
+	        atlas_alarm_cancel(p->alarm_id);
+		coap_session_release(p->session);
+	        coap_free_context(p->ctx);
+	        free(p);
+	    }
 	    break;
-	}	
+	}
         pp = p;
-    }
+    }	
 }
 
 static void request_alarm_cb(atlas_alarm_id_t alarm_id)
@@ -218,6 +248,7 @@ static void request_alarm_cb(atlas_alarm_id_t alarm_id)
             else
                 pp->next = p->next;
 
+            atlas_sched_del_entry(p->coap_fd);
             coap_session_release(p->session);
             coap_free_context(p->ctx);
             free(p);
@@ -240,6 +271,7 @@ add_request(coap_context_t *ctx, coap_session_t *session, uint32_t token, atlas_
     entry->session = session;
     entry->token = token;
     entry->callback = callback;
+    entry->dirty = 0;
     entry->next = NULL;
 
     /* Get CoAP request file descriptor */
