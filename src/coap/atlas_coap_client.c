@@ -316,8 +316,8 @@ atlas_coap_client_request(const char *uri, uint16_t port,
                           atlas_coap_client_cb_t cb)
 {
     coap_address_t dst;
-    coap_context_t *ctx = NULL;
-    coap_session_t *session = NULL;
+    coap_context_t *ctx;
+    coap_session_t *session;
     coap_pdu_t *req_pdu = NULL;
     int res;
     uint32_t token;
@@ -335,19 +335,17 @@ atlas_coap_client_request(const char *uri, uint16_t port,
     if (res < 0)
         return ATLAS_GENERAL_ERR;    
 
-    /* Lazy init for context */
+    /* Context init */
+    ctx = coap_new_context(NULL);
     if (!ctx) {
-        ctx = coap_new_context(NULL);
-        if (!ctx) {
-            ATLAS_LOGGER_ERROR("Cannot create CoAP context for client request");
-            return ATLAS_GENERAL_ERR;
-        }
-
-        /* Register handlers */
-        coap_register_response_handler(ctx, message_handler);
-        coap_register_event_handler(ctx, event_handler);
-        coap_register_nack_handler(ctx, nack_handler);
+        ATLAS_LOGGER_ERROR("Cannot create CoAP context for client request");
+        return ATLAS_GENERAL_ERR;
     }
+
+    /* Register handlers */
+    coap_register_response_handler(ctx, message_handler);
+    coap_register_event_handler(ctx, event_handler);
+    coap_register_nack_handler(ctx, nack_handler);
 
     dst.size = res;
     dst.addr.sin.sin_port = htons(port);
