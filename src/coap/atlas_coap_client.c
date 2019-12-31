@@ -5,11 +5,44 @@
 #include "atlas_coap_client.h"
 #include "../logger/atlas_logger.h"
 #include "../scheduler/atlas_scheduler.h"
+#include "../alarm/atlas_alarm.h"
 
-#define ATLAS_COAP_CLIENT_TOKEN_LEN (4)
+#define ATLAS_COAP_CLIENT_TIMEOUT_MS (5000)
 
-static coap_context_t *ctx;
-static uint8_t token[ATLAS_COAP_CLIENT_TOKEN_LEN];
+typedef struct _atlas_coap_client_req
+{
+    /* CoAP request file descriptor */
+    int coap_fd;
+
+    /* Timeout alarm id */
+    atlas_alarm_id_t alarm_id;
+
+    /* CoAP context */
+    coap_context_t *ctx;
+
+    /* CoAP session */
+    coap_session_t *session;
+
+    /* CoAP request token */
+    uint32_t token;
+
+    /* Higher layer application callback */
+    atlas_coap_client_cb_t callback;
+
+    /* Next entry */
+    struct _atlas_coap_client_req *next;
+
+} atlas_coap_client_req_t;
+
+static atlas_coap_client_req_t *req_entry;
+
+static uint32_t
+get_new_token()
+{
+    static uint32_t token = 0;
+
+    return token++;
+}
 
 static int
 resolve_address(const char *uri, struct sockaddr *dst)
@@ -108,14 +141,26 @@ message_handler(struct coap_context_t *ctx,
 {
     uint8_t *resp_payload = NULL;
     size_t resp_payload_len = 0;
-    int i;
+    atlas_coap_client_req_t *ent;
 
     ATLAS_LOGGER_INFO("CoAP client message handler");
 
+    /* Find request entry */
+    for (ent = req_entry; ent; ent = ent->next) {
+        if (ent->ctx == ctx && ent->session == session)
+            break;
+    }
+
+    if (!ent) {
+        ATLAS_LOGGER_ERROR("CoAP client: cannot find request entry associated with context and session");
+        return;
+    }
+    
     /* FIXME check token */
     if (received->type == COAP_MESSAGE_RST) {
         ATLAS_LOGGER_INFO("CoAP client: got RST as response");
-        return;
+        ent->callback(ATLAS_COAP_RESP_RESET, NULL, 0);
+	return;
     }
 
     /* If response is SUCCESS */
@@ -123,31 +168,127 @@ message_handler(struct coap_context_t *ctx,
         /* Returns 0 on error*/
         if (!coap_get_data(received, &resp_payload_len, &resp_payload)) {
             ATLAS_LOGGER_ERROR("CoAP client: cannot get CoAP response payload");
-            return;
+	    return;
         }
-        for (i = 0; i < resp_payload_len; i++)
-            printf("%c", resp_payload[i]);
 
-        printf("\n");
+	/* Call the higher layer application callback */
+        ent->callback(ATLAS_COAP_RESP_OK, resp_payload, resp_payload_len);
     }
 }
 
 static void
-atlas_coap_client_sched_callback(int fd)
+coap_client_sched_callback(int fd)
 {
+    atlas_coap_client_req_t *p, *pp;
+    
     ATLAS_LOGGER_DEBUG("CoAP client: Handling CoAP response...");
 
-    coap_run_once(ctx, COAP_RUN_NONBLOCK);
+    for (p = req_entry; p; p = p->next) {
+        if (p->coap_fd == fd) {
+	    coap_run_once(p->ctx, COAP_RUN_NONBLOCK);
+            
+            if (p == req_entry)
+                req_entry = req_entry->next;
+            else
+                pp->next = p->next;
+
+            atlas_sched_del_entry(p->coap_fd);
+	    coap_session_release(p->session);
+	    coap_free_context(p->ctx);
+	    free(p);
+
+	    break;
+	}	
+        pp = p;
+    }
+}
+
+static void request_alarm_cb(atlas_alarm_id_t alarm_id)
+{
+    atlas_coap_client_req_t *p, *pp;
+    
+    ATLAS_LOGGER_DEBUG("CoAP client: Handling response timeout");
+
+    for (p = req_entry; p; p = p->next) {
+        if (p->alarm_id == alarm_id) {
+            p->callback(ATLAS_COAP_RESP_TIMEOUT, NULL, 0);
+
+            if (p == req_entry)
+                req_entry = req_entry->next;
+            else
+                pp->next = p->next;
+
+            coap_session_release(p->session);
+            coap_free_context(p->ctx);
+            free(p);
+
+            break;
+        }
+        pp = p;
+    }
+}
+
+static atlas_status_t
+add_request(coap_context_t *ctx, coap_session_t *session, uint32_t token, atlas_coap_client_cb_t callback)
+{
+    int fd;
+    atlas_coap_client_req_t *entry, *p;
+    atlas_status_t status;
+
+    entry = (atlas_coap_client_req_t*) malloc(sizeof(atlas_coap_client_req_t));
+    entry->ctx = ctx;
+    entry->session = session;
+    entry->token = token;
+    entry->callback = callback;
+    entry->next = NULL;
+
+    /* Get CoAP request file descriptor */
+    fd = coap_context_get_coap_fd(ctx);
+    if (fd == -1) {
+        ATLAS_LOGGER_ERROR("Cannot get CoAP file descriptor");
+        status = ATLAS_GENERAL_ERR;
+	goto ERR;
+    }
+    entry->coap_fd = fd;
+
+    /* Set alarm for the CoAP request */
+    entry->alarm_id = atlas_alarm_set(ATLAS_COAP_CLIENT_TIMEOUT_MS, request_alarm_cb, 1);
+    if (entry->alarm_id < 0) {
+        ATLAS_LOGGER_ERROR("Cannot set alarm for CoAP client request");
+	status = ATLAS_GENERAL_ERR;
+	goto ERR;
+    }
+
+    /* Schedule CoAP response for this request */
+    atlas_sched_add_entry(fd, coap_client_sched_callback); 
+
+    if (!req_entry)
+        req_entry = entry;
+    else {
+        p = req_entry;
+	while(p->next) p = p->next;
+
+	p->next = entry;
+    }
+
+    return ATLAS_OK; 
+ERR:
+    free(entry);
+    
+    return status;
 }
 
 atlas_status_t
-atlas_coap_client_request(const char *uri, uint16_t port, const uint8_t *req_payload, size_t req_payload_len, atlas_coap_client_cb_t cb)
+atlas_coap_client_request(const char *uri, uint16_t port,
+                          const uint8_t *req_payload, size_t req_payload_len,
+                          atlas_coap_client_cb_t cb)
 {
     coap_address_t dst;
+    coap_context_t *ctx = NULL;
     coap_session_t *session = NULL;
     coap_pdu_t *req_pdu = NULL;
     int res;
-    int fd;
+    uint32_t token;
     atlas_status_t status = ATLAS_OK;
 
     if (!uri)
@@ -171,7 +312,6 @@ atlas_coap_client_request(const char *uri, uint16_t port, const uint8_t *req_pay
         }
 
         /* Register handlers */
-        coap_register_option(ctx, COAP_OPTION_BLOCK2);
         coap_register_response_handler(ctx, message_handler);
         coap_register_event_handler(ctx, event_handler);
         coap_register_nack_handler(ctx, nack_handler);
@@ -191,39 +331,40 @@ atlas_coap_client_request(const char *uri, uint16_t port, const uint8_t *req_pay
     if (!(req_pdu = coap_new_pdu(session))) {
         ATLAS_LOGGER_ERROR("Cannot create client request PDU");
         status = ATLAS_GENERAL_ERR;
-        goto ERROR;
+        goto ERR;
     }
  
     req_pdu->type = COAP_REQUEST_GET;
     req_pdu->tid = coap_new_message_id(session);
     req_pdu->code = COAP_REQUEST_GET;
  
-    if (!coap_add_token(req_pdu, ATLAS_COAP_CLIENT_TOKEN_LEN, token)) {
+    token = get_new_token();
+    if (!coap_add_token(req_pdu, sizeof(uint32_t), (uint8_t*) &token)) {
         ATLAS_LOGGER_ERROR("Cannot add token to CoAP client request");
         status = ATLAS_GENERAL_ERR;
-        goto ERROR;
+        goto ERR;
     }
   
     /* Add request payload */
     if (req_payload && req_payload_len)
         coap_add_data(req_pdu, req_payload_len, req_payload);
 
-    /* Send CoAP request */
-    ATLAS_LOGGER_DEBUG("Sending CoAP client request...");
-
-    fd = coap_context_get_coap_fd(ctx);
-    if (fd == -1) {
-        ATLAS_LOGGER_ERROR("Cannot get CoAP file descriptor");
-        status = ATLAS_GENERAL_ERR;
-        goto ERROR;
+    /* Chain request */
+    status = add_request(ctx, session, token, cb);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Cannot add the CoAP request to the request chain");
+        goto ERR;
     }
 
-    /* Schedule CoAP server */
-    atlas_sched_add_entry(fd, atlas_coap_client_sched_callback);
-
+    /* Send request */
+    ATLAS_LOGGER_DEBUG("Sending CoAP client request...");
     coap_send(session, req_pdu);
-ERROR:
-    //coap_session_release(session);
+
+    return ATLAS_OK;
+
+ERR:
+    coap_session_release(session);
+    coap_free_context(ctx);
 
     return status;
 }

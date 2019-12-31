@@ -3,14 +3,18 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include "atlas_coap_response.h"
 #include "../utils/atlas_status.h"
 
-typedef void (*atlas_coap_client_cb_t)(int status, const uint8_t *resp_payload,
+typedef void (*atlas_coap_client_cb_t)(atlas_coap_response_t resp_status, const uint8_t *resp_payload,
 size_t resp_payload_len);
 
 /**
  * @brief Execute a CoAP request
  * @param[in] uri CoAP URI
+ * @param[in] port CoAP server port
+ * @param[in] req_payload CoAP request payload
+ * @param[in] req_payload_len CoAP request payload length
  * @param[in] cb Response callback
  * @return status
  */

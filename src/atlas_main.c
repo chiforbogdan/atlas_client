@@ -6,8 +6,15 @@
 #include "coap/atlas_coap_response.h"
 #include "coap/atlas_coap_client.h"
 
-void test (int status, const uint8_t *resp_payload, size_t resp_payload_len)
+void test (atlas_coap_response_t resp_status, const uint8_t *resp_payload, size_t resp_payload_len)
 {
+    int i;
+
+    if (resp_payload && resp_payload_len)
+    for (i = 0; i < resp_payload_len; i++)
+        printf("%c", resp_payload[i]);
+
+    printf("\n");
 }
 
 int main(int argc, char **argv)
