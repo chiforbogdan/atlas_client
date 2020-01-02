@@ -338,12 +338,19 @@ atlas_coap_server_start(const char *hostname, const char *port,
     coap_startup();
     
     ctx = get_context(hostname, port, server_mode, psk);
+    if (!ctx) {
+        ATLAS_LOGGER_ERROR("Cannot create CoAP context");
+        return ATLAS_GENERAL_ERR;
+    }
     
     init_default_resources(ctx);
 
     fd = coap_context_get_coap_fd(ctx);
     if (fd == -1) {
         ATLAS_LOGGER_INFO("Cannot get CoAP file descriptor");
+        coap_free_context(ctx);
+        ctx = NULL;
+
         return ATLAS_GENERAL_ERR;
     }
 
