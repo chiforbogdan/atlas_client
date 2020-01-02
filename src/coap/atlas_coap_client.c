@@ -7,7 +7,7 @@
 #include "../scheduler/atlas_scheduler.h"
 #include "../alarm/atlas_alarm.h"
 
-#define ATLAS_COAP_CLIENT_TIMEOUT_MS (5000)
+#define ATLAS_COAP_CLIENT_TMP_BUF_LEN (128)
 
 typedef struct _atlas_coap_client_req
 {
@@ -48,17 +48,27 @@ get_new_token()
 }
 
 static int
-resolve_address(const char *uri, struct sockaddr *dst)
+resolve_address(coap_str_const_t *hostname, struct sockaddr *dst)
 {
     struct addrinfo *res, *ainfo;
     struct addrinfo hints;
+    char *addr;
+    int status;
     int len;
 
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_family = AF_UNSPEC;
 
-    if (getaddrinfo(uri, NULL, &hints, &res)) {
+    addr = (char *) malloc(hostname->length + 1);
+    memset(addr, 0, hostname->length + 1);
+    memcpy(addr, hostname->s, hostname->length);
+
+    status = getaddrinfo(addr, NULL, &hints, &res);
+    
+    free(addr);
+
+    if (status) {
         ATLAS_LOGGER_ERROR("Cannot resolve CoAP request address");
         return -1;
     }
@@ -191,15 +201,22 @@ message_handler(struct coap_context_t *ctx,
 
     /* If response is SUCCESS */
     if (COAP_RESPONSE_CLASS(received->code) == 2) {
+        ATLAS_LOGGER_DEBUG("CoAP client: Response code is 200");
         /* Returns 0 on error*/
         if (!coap_get_data(received, &resp_payload_len, &resp_payload)) {
             ATLAS_LOGGER_ERROR("CoAP client: cannot get CoAP response payload");
 	    return;
         }
-
 	/* Call the higher layer application callback */
         ent->callback(ATLAS_COAP_RESP_OK, resp_payload, resp_payload_len);
+    } else if (COAP_RESPONSE_CLASS(received->code) == 4) {
+        ATLAS_LOGGER_DEBUG("CoAP client: Response code is 4XX");
+        ent->callback(ATLAS_COAP_RESP_NOT_FOUND, NULL, 0);
+    } else {
+        ATLAS_LOGGER_DEBUG("CoAP client: Response code is UNKNOWN");
+        ent->callback(ATLAS_COAP_RESP_UNKNOWN, NULL, 0);
     }
+
 }
 
 static void
@@ -260,7 +277,8 @@ static void request_alarm_cb(atlas_alarm_id_t alarm_id)
 }
 
 static atlas_status_t
-add_request(coap_context_t *ctx, coap_session_t *session, uint32_t token, atlas_coap_client_cb_t callback)
+add_request(coap_context_t *ctx, coap_session_t *session, uint32_t token,
+            uint16_t timeout, atlas_coap_client_cb_t callback)
 {
     int fd;
     atlas_coap_client_req_t *entry, *p;
@@ -284,7 +302,7 @@ add_request(coap_context_t *ctx, coap_session_t *session, uint32_t token, atlas_
     entry->coap_fd = fd;
 
     /* Set alarm for the CoAP request */
-    entry->alarm_id = atlas_alarm_set(ATLAS_COAP_CLIENT_TIMEOUT_MS, request_alarm_cb, 1);
+    entry->alarm_id = atlas_alarm_set(timeout, request_alarm_cb, 1);
     if (entry->alarm_id < 0) {
         ATLAS_LOGGER_ERROR("Cannot set alarm for CoAP client request");
 	status = ATLAS_GENERAL_ERR;
@@ -311,27 +329,37 @@ ERR:
 }
 
 atlas_status_t
-atlas_coap_client_request(const char *uri, uint16_t port,
+atlas_coap_client_request(const char *uri, atlas_coap_method_t method,
                           const uint8_t *req_payload, size_t req_payload_len,
-                          atlas_coap_client_cb_t cb)
+                          uint16_t timeout, atlas_coap_client_cb_t cb)
 {
     coap_address_t dst;
-    coap_context_t *ctx;
-    coap_session_t *session;
+    coap_context_t *ctx = NULL;
+    coap_session_t *session = NULL;
     coap_pdu_t *req_pdu = NULL;
+    coap_optlist_t *options = NULL;
+    coap_uri_t coap_uri;
+    coap_str_const_t hostname;
     int res;
     uint32_t token;
+    uint8_t buf[ATLAS_COAP_CLIENT_TMP_BUF_LEN];
+    uint8_t *buf_tmp;
+    size_t buflen;
     atlas_status_t status = ATLAS_OK;
 
     if (!uri)
         return ATLAS_COAP_INVALID_URI;
-    if (!port)
-        return ATLAS_INVALID_PORT;    
     if (!cb)
         return ATLAS_INVALID_CALLBACK;
 
-    /* Resolve CoAP URI */
-    res = resolve_address(uri, &dst.addr.sa);
+    if (coap_split_uri((uint8_t *)uri, strlen(uri), &coap_uri) < 0) {
+        ATLAS_LOGGER_ERROR("Invalid CoAP URI");
+        return ATLAS_GENERAL_ERR;
+    }
+
+    /* Resolve CoAP hostname */
+    hostname = coap_uri.host;
+    res = resolve_address(&hostname, &dst.addr.sa);
     if (res < 0)
         return ATLAS_GENERAL_ERR;    
 
@@ -348,7 +376,7 @@ atlas_coap_client_request(const char *uri, uint16_t port,
     coap_register_nack_handler(ctx, nack_handler);
 
     dst.size = res;
-    dst.addr.sin.sin_port = htons(port);
+    dst.addr.sin.sin_port = htons(coap_uri.port);
 
     /* Get session */
     session = get_session(ctx, COAP_PROTO_UDP, &dst);
@@ -363,24 +391,82 @@ atlas_coap_client_request(const char *uri, uint16_t port,
         status = ATLAS_GENERAL_ERR;
         goto ERR;
     }
- 
-    req_pdu->type = COAP_REQUEST_GET;
+
+    req_pdu->type = COAP_MESSAGE_CON;
     req_pdu->tid = coap_new_message_id(session);
-    req_pdu->code = COAP_REQUEST_GET;
+    
+    switch(method) {
+        case ATLAS_COAP_METHOD_GET:
+            req_pdu->code = COAP_REQUEST_GET;
+            break;
+
+        case ATLAS_COAP_METHOD_POST:
+            req_pdu->code = COAP_REQUEST_POST;
+            break;
+
+        case ATLAS_COAP_METHOD_PUT:
+            req_pdu->code = COAP_REQUEST_PUT;
+            break;
+
+        case ATLAS_COAP_METHOD_DELETE:
+            req_pdu->code = COAP_REQUEST_DELETE;
+            break;
+
+        default:
+            req_pdu->code = COAP_REQUEST_GET;
+    }
  
+    /* Add token */
     token = get_new_token();
     if (!coap_add_token(req_pdu, sizeof(uint32_t), (uint8_t*) &token)) {
         ATLAS_LOGGER_ERROR("Cannot add token to CoAP client request");
         status = ATLAS_GENERAL_ERR;
         goto ERR;
     }
-  
+
+    /* Add URI path */
+    if (coap_uri.path.length) {
+        buflen = sizeof(buf);
+        buf_tmp = buf;
+        res = coap_split_path(coap_uri.path.s, coap_uri.path.length, buf_tmp, &buflen);
+
+        while (res--) {
+            coap_insert_optlist(&options,
+                                coap_new_optlist(COAP_OPTION_URI_PATH,
+                                coap_opt_length(buf_tmp),
+                                coap_opt_value(buf_tmp)));
+ 
+            buf_tmp += coap_opt_size(buf_tmp);
+        }
+    }
+
+    /* Add URI query */
+    if (coap_uri.query.length) {
+        buflen = sizeof(buf);
+        buf_tmp = buf;
+        res = coap_split_query(coap_uri.query.s, coap_uri.query.length, buf_tmp, &buflen);
+ 
+        while (res--) {
+            coap_insert_optlist(&options,
+                                coap_new_optlist(COAP_OPTION_URI_QUERY,
+                                coap_opt_length(buf),
+                                coap_opt_value(buf)));
+ 
+            buf_tmp += coap_opt_size(buf_tmp);
+        }
+    }
+
+    if (options) {
+        coap_add_optlist_pdu(req_pdu, &options);
+        coap_delete_optlist(options);
+    }
+
     /* Add request payload */
     if (req_payload && req_payload_len)
         coap_add_data(req_pdu, req_payload_len, req_payload);
 
     /* Chain request */
-    status = add_request(ctx, session, token, cb);
+    status = add_request(ctx, session, token, timeout, cb);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Cannot add the CoAP request to the request chain");
         goto ERR;

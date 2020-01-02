@@ -7,6 +7,7 @@ typedef enum _atlas_coap_response
     ATLAS_COAP_RESP_NOT_FOUND = 404,
     ATLAS_COAP_RESP_TIMEOUT,
     ATLAS_COAP_RESP_RESET,
+    ATLAS_COAP_RESP_UNKNOWN,
 
 } atlas_coap_response_t;
 

@@ -217,7 +217,7 @@ process_request_handler(coap_context_t *ctx,
         return;
     }
 
-    uri_path = (char*) malloc(coap_uri_path->length + 1);
+    uri_path = (char*) calloc(sizeof(char), (coap_uri_path->length + 1));
     memcpy(uri_path, coap_uri_path->s, coap_uri_path->length);
 
     while(listener && listener->resource != resource)

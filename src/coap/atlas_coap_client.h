@@ -4,21 +4,25 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "atlas_coap_response.h"
+#include "atlas_coap_method.h"
 #include "../utils/atlas_status.h"
+
+#define ATLAS_COAP_CLIENT_DEFAULT_TIMEOUT_MS (5000)
 
 typedef void (*atlas_coap_client_cb_t)(atlas_coap_response_t resp_status, const uint8_t *resp_payload,
 size_t resp_payload_len);
 
 /**
  * @brief Execute a CoAP request
- * @param[in] uri CoAP URI
- * @param[in] port CoAP server port
+ * @param[in] uri CoAP URI (e.g. coap://<IP>:<PORT>/<PATH>?<QUERY>)
+ * @param[in] method CoAP method
  * @param[in] req_payload CoAP request payload
  * @param[in] req_payload_len CoAP request payload length
+ * @param[in] timeout Timeout value (ms)
  * @param[in] cb Response callback
  * @return status
  */
-atlas_status_t atlas_coap_client_request(const char *uri, uint16_t port,
-const uint8_t *req_payload, size_t req_payload_len, atlas_coap_client_cb_t cb);
+atlas_status_t atlas_coap_client_request(const char *uri, atlas_coap_method_t method,
+const uint8_t *req_payload, size_t req_payload_len, uint16_t timeout, atlas_coap_client_cb_t cb);
 
 #endif /* __ATLAS_COAP_CLIENT_H__ */
