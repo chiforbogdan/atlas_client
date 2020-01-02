@@ -7,6 +7,18 @@
 #include "atlas_coap_method.h"
 #include "atlas_coap_response.h"
 
+typedef enum _atlas_coap_server_mode
+{
+    /* UDP transport mode */
+    ATLAS_COAP_SERVER_MODE_UDP = (1 << 0),
+
+    /* DTLS with PSK transport mode */
+    ATLAS_COAP_SERVER_MODE_DTLS_PSK = (1 << 1),
+
+    /* UDP + DTLS PSK transport modes */
+    ATLAS_COAP_SERVER_MODE_BOTH = (ATLAS_COAP_SERVER_MODE_UDP | ATLAS_COAP_SERVER_MODE_DTLS_PSK),
+} atlas_coap_server_mode_t;
+
 typedef atlas_coap_response_t (*atlas_coap_server_cb_t)(const char *uri_path, const uint8_t *req_payload, size_t req_payload_len,
                                                         uint8_t **resp_payload, size_t *resp_payload_len);
 
@@ -15,9 +27,11 @@ typedef atlas_coap_response_t (*atlas_coap_server_cb_t)(const char *uri_path, co
 * @brief Start CoAP server
 * @param[in] hostname Server hostname
 * @param[in] port Server port
+* @param[in] server_mode Server mode (UDP, DTLS PSK, both)
+* @param[in] psk Pre-shared key (for DTLS)
 * @return status
 */
-atlas_status_t atlas_coap_server_start(const char *hostname, const char *port);
+atlas_status_t atlas_coap_server_start(const char *hostname, const char *port, atlas_coap_server_mode_t server_mode, const char *psk);
 
 /**
  * @brief Add CoAP resource

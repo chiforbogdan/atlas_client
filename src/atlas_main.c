@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     ATLAS_LOGGER_INFO("Starting ATLAS IoT client...");
 
     /* Start server */
-    if (atlas_coap_server_start("127.0.0.1", "10001") != ATLAS_OK) {
+    if (atlas_coap_server_start("127.0.0.1", "10001", ATLAS_COAP_SERVER_MODE_BOTH, "12345") != ATLAS_OK) {
         ATLAS_LOGGER_INFO("Cannot start CoAP server");
         return -1;
     }

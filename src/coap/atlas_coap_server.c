@@ -14,6 +14,9 @@
 
 #define ATLAS_MAX_PSK_KEY_BYTES (64)
 
+#define ATLAS_COAP_SERVER_IS_UDP(MODE) ((MODE) & ATLAS_COAP_SERVER_MODE_UDP)
+#define ATLAS_COAP_SERVER_IS_DTLS(MODE) ((MODE) & ATLAS_COAP_SERVER_MODE_DTLS_PSK)
+
 typedef struct _atlas_coap_server_listener
 {
     /* CoAP resource */
@@ -29,9 +32,8 @@ typedef struct _atlas_coap_server_listener
     struct _atlas_coap_server_listener *next;
 } atlas_coap_server_listener_t;
 
-/* FIXME remove this*/
-static uint8_t key[ATLAS_MAX_PSK_KEY_BYTES];
-static ssize_t keyLen = 0;
+/* Pre-shared key */
+static uint8_t key[ATLAS_MAX_PSK_KEY_BYTES + 1];
 
 /* CoAP server context */
 static coap_context_t *ctx;
@@ -40,7 +42,7 @@ static int fd;
 static atlas_coap_server_listener_t *server_listeners[ATLAS_COAP_METHOD_MAX];
 
 static int
-set_dtls_psk(coap_context_t *ctx)
+set_dtls_psk(coap_context_t *ctx, const char *psk_val)
 {
     coap_dtls_spsk_t psk;
 
@@ -52,8 +54,9 @@ set_dtls_psk(coap_context_t *ctx)
     memset(&psk, 0, sizeof(psk));
     psk.version = COAP_DTLS_SPSK_SETUP_VERSION;
 
+    strncpy((char *) key, psk_val, ATLAS_MAX_PSK_KEY_BYTES);
     psk.psk_info.key.s = key;
-    psk.psk_info.key.length = keyLen;
+    psk.psk_info.key.length = strlen((char *) key);
 
     /* Set PSK */
     coap_context_set_psk2(ctx, &psk);
@@ -62,7 +65,8 @@ set_dtls_psk(coap_context_t *ctx)
 }
 
 static coap_context_t*
-get_context(const char *hostname, const char *port)
+get_context(const char *hostname, const char *port,
+            atlas_coap_server_mode_t server_mode, const char *psk)
 {
     struct addrinfo hints;
     struct addrinfo *res, *r;
@@ -76,7 +80,8 @@ get_context(const char *hostname, const char *port)
         return NULL;
 
     /* Set DTLS PSK */
-    set_dtls_psk(ctx);
+    if (ATLAS_COAP_SERVER_IS_DTLS(server_mode))
+        set_dtls_psk(ctx, psk);
 
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_UNSPEC;
@@ -99,23 +104,29 @@ get_context(const char *hostname, const char *port)
         memcpy(&addr.addr, r->ai_addr, addr.size);
         addrs = addr;
 
-        if (addr.addr.sa.sa_family == AF_INET) {
-            tmp = ntohs(addr.addr.sin.sin_port) + 1;
-            addrs.addr.sin.sin_port = htons(tmp);
-        } else if (addr.addr.sa.sa_family == AF_INET6) {
-            uint16_t temp = ntohs(addr.addr.sin6.sin6_port) + 1;
-            addrs.addr.sin6.sin6_port = htons(temp);
+        if (ATLAS_COAP_SERVER_IS_UDP(server_mode) && ATLAS_COAP_SERVER_IS_DTLS(server_mode)) {
+            if (addr.addr.sa.sa_family == AF_INET) {
+                tmp = ntohs(addr.addr.sin.sin_port) + 1;
+                addrs.addr.sin.sin_port = htons(tmp);
+            } else if (addr.addr.sa.sa_family == AF_INET6) {
+                uint16_t temp = ntohs(addr.addr.sin6.sin6_port) + 1;
+                addrs.addr.sin6.sin6_port = htons(temp);
+            }
         }
 
-        ep = coap_new_endpoint(ctx, &addr, COAP_PROTO_UDP);
-        if (!ep) {
-            ATLAS_LOGGER_ERROR("Cannot open COAP UDP");
-            continue;
+        if (ATLAS_COAP_SERVER_IS_UDP(server_mode)) {
+            ep = coap_new_endpoint(ctx, &addr, COAP_PROTO_UDP);
+            if (!ep) {
+                ATLAS_LOGGER_ERROR("Cannot open COAP UDP");
+                continue;
+            }
         }
 
-        eps = coap_new_endpoint(ctx, &addrs, COAP_PROTO_DTLS);
-        if (!eps)
-            ATLAS_LOGGER_ERROR("Cannot open COAP DTLS");
+        if (ATLAS_COAP_SERVER_IS_DTLS(server_mode)) {
+            eps = coap_new_endpoint(ctx, &addrs, COAP_PROTO_DTLS);
+            if (!eps)
+                ATLAS_LOGGER_ERROR("Cannot open COAP DTLS");
+        }
 
         break;
     }
@@ -316,7 +327,8 @@ delete_handler(coap_context_t *ctx,
 
 
 atlas_status_t
-atlas_coap_server_start(const char *hostname, const char *port)
+atlas_coap_server_start(const char *hostname, const char *port,
+                        atlas_coap_server_mode_t server_mode, const char *psk)
 {
     if (!hostname)
         return ATLAS_INVALID_HOSTNAME;
@@ -325,7 +337,7 @@ atlas_coap_server_start(const char *hostname, const char *port)
 
     coap_startup();
     
-    ctx = get_context(hostname, port);
+    ctx = get_context(hostname, port, server_mode, psk);
     
     init_default_resources(ctx);
 
