@@ -13,6 +13,14 @@ typedef void (*atlas_coap_client_cb_t)(atlas_coap_response_t resp_status, const 
 size_t resp_payload_len);
 
 /**
+ * @brief Set DTLS PSK info to be used in subsequent requests
+ * @param[in] identity DTLS identity
+ * @param[in] psk DTLS Pre-shared key
+ * @return status
+ */
+atlas_status_t atlas_coap_client_set_dtls_info(const char *identity, const char *psk);
+
+/**
  * @brief Execute a CoAP request
  * @param[in] uri CoAP URI (e.g. coap://<IP>:<PORT>/<PATH>?<QUERY>)
  * @param[in] method CoAP method

@@ -9,6 +9,8 @@ typedef enum _atlas_status {
     ATLAS_COAP_SRV_DTLS_NOT_SUPPORTED,
     ATLAS_COAP_INVALID_URI,
     ATLAS_INVALID_CALLBACK,
+    ATLAS_INVALID_DTLS_IDENTITY,
+    ATLAS_INVALID_DTLS_PSK,
 
 } atlas_status_t ;
 

@@ -7,6 +7,9 @@
 #include "../scheduler/atlas_scheduler.h"
 #include "../alarm/atlas_alarm.h"
 
+#define ATLAS_COAP_CLIENT_DTLS_IDENTITY_LEN (64)
+#define ATLAS_COAP_CLIENT_DTLS_KEY_LEN (64)
+
 #define ATLAS_COAP_CLIENT_TMP_BUF_LEN (128)
 
 typedef struct _atlas_coap_client_req
@@ -38,6 +41,9 @@ typedef struct _atlas_coap_client_req
 } atlas_coap_client_req_t;
 
 static atlas_coap_client_req_t *req_entry;
+static coap_dtls_cpsk_t dtls_psk;
+static char dtls_identity[ATLAS_COAP_CLIENT_DTLS_IDENTITY_LEN + 1];
+static char dtls_key[ATLAS_COAP_CLIENT_DTLS_KEY_LEN + 1];
 
 static uint32_t
 get_new_token()
@@ -89,7 +95,9 @@ resolve_address(coap_str_const_t *hostname, struct sockaddr *dst)
 static coap_session_t*
 get_session(coap_context_t *ctx, coap_proto_t proto, coap_address_t *dst)
 {
-    /* FIXME add DTLS support */
+    if (proto == COAP_PROTO_DTLS)
+        coap_new_client_session_psk2(ctx, NULL, dst, proto, &dtls_psk);
+
     return coap_new_client_session(ctx, NULL, dst, proto);
 }
 
@@ -379,7 +387,11 @@ atlas_coap_client_request(const char *uri, atlas_coap_method_t method,
     dst.addr.sin.sin_port = htons(coap_uri.port);
 
     /* Get session */
-    session = get_session(ctx, COAP_PROTO_UDP, &dst);
+    if (coap_uri.scheme == COAP_URI_SCHEME_COAPS)
+        session = get_session(ctx, COAP_PROTO_DTLS, &dst);
+    else
+        session = get_session(ctx, COAP_PROTO_UDP, &dst);
+
     if (!session) {
         ATLAS_LOGGER_ERROR("Cannot create CoAP session for client request");
         return ATLAS_GENERAL_ERR;
@@ -483,4 +495,28 @@ ERR:
     coap_free_context(ctx);
 
     return status;
+}
+
+atlas_status_t
+atlas_coap_client_set_dtls_info(const char *identity, const char *psk)
+{
+    if (!identity)
+        return ATLAS_INVALID_DTLS_IDENTITY;
+    if (!psk)
+        return ATLAS_INVALID_DTLS_PSK;
+
+    memset (&dtls_psk, 0, sizeof(dtls_psk));
+    dtls_psk.version = COAP_DTLS_CPSK_SETUP_VERSION;
+
+    /* Set DTLS identity */
+    strncpy(dtls_identity, identity, sizeof(dtls_identity) - 1);
+    dtls_psk.psk_info.identity.s = (uint8_t *) dtls_identity;
+    dtls_psk.psk_info.identity.length = strlen(dtls_identity);
+
+    /* Set DTLS PSK */
+    strncpy(dtls_key, psk, sizeof(dtls_key) - 1);
+    dtls_psk.psk_info.key.s = (uint8_t *) dtls_key;
+    dtls_psk.psk_info.key.length = strlen(dtls_key);
+
+    return ATLAS_OK;
 }
