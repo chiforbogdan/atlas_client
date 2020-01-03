@@ -96,7 +96,7 @@ static coap_session_t*
 get_session(coap_context_t *ctx, coap_proto_t proto, coap_address_t *dst)
 {
     if (proto == COAP_PROTO_DTLS)
-        coap_new_client_session_psk2(ctx, NULL, dst, proto, &dtls_psk);
+        return coap_new_client_session_psk2(ctx, NULL, dst, proto, &dtls_psk);
 
     return coap_new_client_session(ctx, NULL, dst, proto);
 }

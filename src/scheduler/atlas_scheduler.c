@@ -1,13 +1,19 @@
-#include "atlas_scheduler.h"
 #include <stdlib.h>
+#include <stdint.h>
+#include "atlas_scheduler.h"
 #include "../logger/atlas_logger.h"
 
 typedef struct _atlas_sched_entry
 {
     /* File descriptor */
     int fd;
+    
     /* Callback */
     atlas_sched_cb_t callback;
+    
+    /* Indicates if the entry is dirty */
+    uint8_t dirty;
+
     /* Next entry */
     struct _atlas_sched_entry *next;
  } atlas_sched_entry_t;
@@ -25,6 +31,7 @@ atlas_sched_add_entry(int fd, atlas_sched_cb_t cb)
     ent = (atlas_sched_entry_t*) malloc(sizeof(atlas_sched_entry_t));
     ent->fd = fd;
     ent->callback = cb;
+    ent->dirty = 0;
     ent->next = NULL;
 
     if (!sched_entry)
@@ -40,29 +47,20 @@ atlas_sched_add_entry(int fd, atlas_sched_cb_t cb)
 void
 atlas_sched_del_entry(int fd)
 {
-    atlas_sched_entry_t *p, *pp;
+    atlas_sched_entry_t *p;
 
-    for (p = sched_entry; p; p = p->next) {
+    for (p = sched_entry; p; p = p->next)
         if (p->fd == fd) {
-            if (p == sched_entry)
-                sched_entry = p->next;
-	    else
-                pp->next = p->next;
-
-            ATLAS_LOGGER_DEBUG("Scheduler entry removed");
-	    free(p);
-
+            p->dirty = 1;
 	    break;
 	}
-	pp = p;
-    }
 }
 
 
 void
 atlas_sched_loop()
 {
-    atlas_sched_entry_t *ent, *ent_next;
+    atlas_sched_entry_t *ent, *ent_next, *ent_prev;
     int result, max_fd;
     fd_set readfds;
 
@@ -71,21 +69,33 @@ atlas_sched_loop()
     while (1) {
         FD_ZERO(&readfds);
         max_fd = 0;
-        for (ent = sched_entry; ent; ent = ent->next) {
-            if (ent->fd > max_fd)
-                max_fd = ent->fd;
+        for (ent = sched_entry; ent; ent = ent_next) {
+            ent_next = ent->next;
 
-            FD_SET(ent->fd, &readfds);
+            /* If entry should be deleted */	    
+	    if (ent->dirty) {
+                if (ent == sched_entry)
+                    sched_entry = sched_entry->next;
+                else
+                    ent_prev->next = ent->next;
+
+		free(ent);
+			
+	    } else {
+                if (ent->fd > max_fd)
+                    max_fd = ent->fd;
+
+                FD_SET(ent->fd, &readfds);
+
+		ent_prev = ent;
+	    }
         }
 
         result = select(max_fd + 1, &readfds, NULL, NULL, NULL);
         if (result > 0) {
-            for (ent = sched_entry; ent; ent = ent_next) {
-                ent_next = ent->next;
-
-                if (FD_ISSET(ent->fd, &readfds))
+            for (ent = sched_entry; ent; ent = ent->next)
+                if (!ent->dirty && FD_ISSET(ent->fd, &readfds))
                     ent->callback(ent->fd);
-	    }
         }
     }
 }
