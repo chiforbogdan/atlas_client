@@ -394,7 +394,8 @@ atlas_coap_client_request(const char *uri, atlas_coap_method_t method,
 
     if (!session) {
         ATLAS_LOGGER_ERROR("Cannot create CoAP session for client request");
-        return ATLAS_GENERAL_ERR;
+        status = ATLAS_GENERAL_ERR;
+        goto ERR;
     }
 
     /* Create request PDU */
