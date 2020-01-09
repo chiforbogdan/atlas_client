@@ -393,7 +393,8 @@ atlas_coap_client_request(const char *uri, atlas_coap_method_t method,
 
     if (!session) {
         ATLAS_LOGGER_ERROR("Cannot create CoAP session for client request");
-        return ATLAS_GENERAL_ERR;
+        status = ATLAS_GENERAL_ERR;
+        goto ERR;
     }
 
     /* Create request PDU */
@@ -460,8 +461,8 @@ atlas_coap_client_request(const char *uri, atlas_coap_method_t method,
         while (res--) {
             coap_insert_optlist(&options,
                                 coap_new_optlist(COAP_OPTION_URI_QUERY,
-                                coap_opt_length(buf),
-                                coap_opt_value(buf)));
+                                coap_opt_length(buf_tmp),
+                                coap_opt_value(buf_tmp)));
  
             buf_tmp += coap_opt_size(buf_tmp);
         }
