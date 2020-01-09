@@ -200,7 +200,6 @@ message_handler(struct coap_context_t *ctx,
     /* If token is valid, then the request entry can be deleted */
     ent->dirty = 1;
 
-
     if (received->type == COAP_MESSAGE_RST) {
         ATLAS_LOGGER_INFO("CoAP client: got RST as response");
         ent->callback(ATLAS_COAP_RESP_RESET, NULL, 0);
