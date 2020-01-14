@@ -12,6 +12,7 @@ typedef enum _atlas_status {
     ATLAS_INVALID_DTLS_IDENTITY,
     ATLAS_INVALID_DTLS_PSK,
     ATLAS_IDENTITY_FILE_ERROR,
+    ATLAS_PSK_FILE_ERROR,
 } atlas_status_t ;
 
 #endif /* __ATLAS_STATUS_H__ */

@@ -3,8 +3,15 @@ cmake_minimum_required(VERSION 2.8)
 project(atlas_client)
 
 include(FindPkgConfig)
+
 # CoAP dependency
 pkg_check_modules(COAP libcoap-2-openssl REQUIRED)
+
+# UUID dependency
+pkg_check_modules(UUID uuid REQUIRED)
+
+# OpenSSL dependency
+find_package(OpenSSL REQUIRED)
 
 include_directories(include)
 # Add CoAP headers
@@ -16,8 +23,8 @@ file(GLOB SOURCES "src/*.c" "src/coap/*.c" "src/logger/*.c" "src/scheduler/*.c" 
 link_directories(${COAP_LIBRARY_DIRS})
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-#Add CoAP library
-target_link_libraries(${PROJECT_NAME} ${COAP_LIBRARIES})
+#Add CoAP and UUID library
+target_link_libraries(${PROJECT_NAME} ${COAP_LIBRARIES} ${UUID_LIBRARIES} OpenSSL::Crypto)
 
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall)
 
