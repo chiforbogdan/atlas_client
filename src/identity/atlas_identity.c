@@ -48,7 +48,8 @@ atlas_generate_identity()
     return ATLAS_OK;
 }
 
-void to_base64(const uint8_t *in, size_t in_len, char *out, size_t out_len)
+static void
+to_base64(const uint8_t *in, size_t in_len, char *out, size_t out_len)
 {
     BIO *bmem, *b64;
     BUF_MEM *bptr;
