@@ -37,7 +37,7 @@ reg_callback(atlas_coap_response_t resp_status, const uint8_t *resp_payload, siz
         ATLAS_LOGGER_ERROR("Error in completing the registration request");
         
         /* Start register timer */
-        if (atlas_alarm_set(ATLAS_CLIENT_REGISTER_TIMEOUT_MS, reg_alarm_callback, 1) < 0)
+        if (atlas_alarm_set(ATLAS_CLIENT_REGISTER_TIMEOUT_MS, reg_alarm_callback, ATLAS_ALARM_RUN_ONCE) < 0)
             ATLAS_LOGGER_ERROR("Error in scheduling a register alarm!");
         
         return;

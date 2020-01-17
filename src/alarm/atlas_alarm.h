@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include "../scheduler/atlas_scheduler.h"
 
+#define ATLAS_ALARM_RUN_ONCE           (1)
+#define ATLAS_ALARM_RUN_MULTIPLE_TIMES (0)
+
 typedef int atlas_alarm_id_t;
 
 typedef void (*atlas_alarm_cb_t)(atlas_alarm_id_t);
