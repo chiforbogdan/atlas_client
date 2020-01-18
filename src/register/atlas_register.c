@@ -117,7 +117,9 @@ reg_callback(atlas_coap_response_t resp_status, const uint8_t *resp_payload, siz
     registered = ATLAS_CLIENT_REGISTERED;
     
     /* Start keep-alive timer */
-    ka_alarm_id = atlas_alarm_set(ATLAS_CLIENT_KEEPALIVE_TIMEOUT_MS, keepalive_alarm_callback, 0);
+    ka_alarm_id = atlas_alarm_set(ATLAS_CLIENT_KEEPALIVE_TIMEOUT_MS,
+                                  keepalive_alarm_callback,
+                                  ATLAS_ALARM_RUN_MULTIPLE_TIMES);
     if (ka_alarm_id < 0)
         ATLAS_LOGGER_ERROR("Error in scheduling the keepalive alarm!");
 }
