@@ -209,11 +209,9 @@ message_handler(struct coap_context_t *ctx,
     /* If response is SUCCESS */
     if (COAP_RESPONSE_CLASS(received->code) == 2) {
         ATLAS_LOGGER_DEBUG("CoAP client: Response code is 200");
-        /* Returns 0 on error*/
-        if (!coap_get_data(received, &resp_payload_len, &resp_payload)) {
-            ATLAS_LOGGER_ERROR("CoAP client: cannot get CoAP response payload");
-	    return;
-        }
+        /* Get response payload, if any */
+        coap_get_data(received, &resp_payload_len, &resp_payload);
+
 	/* Call the higher layer application callback */
         ent->callback(ATLAS_COAP_RESP_OK, resp_payload, resp_payload_len);
     } else if (COAP_RESPONSE_CLASS(received->code) == 4) {

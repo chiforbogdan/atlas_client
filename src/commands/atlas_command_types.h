@@ -3,11 +3,14 @@
 
 typedef enum _atlas_cmd_type
 {
-    /* Register command: payload is the client identity, response is empty */
-    ATLAS_CMD_REGISTER,
+    /* Register command: payload is the client identity*/
+    ATLAS_CMD_REGISTER = 0,
 
-    /* Keepalive command: payload is a 2 byte token, response is empty */
+    /* Keepalive command: payload is a 2 byte token*/
     ATLAS_CMD_KEEPALIVE,
+
+    /* Identity command: payload is the client identity */
+    ATLAS_CMD_IDENTITY,
 
 } atlas_cmd_type_t;
 

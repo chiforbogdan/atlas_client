@@ -158,12 +158,16 @@ ERR:
 const char *
 atlas_identity_get()
 {
-    return identity;
+    //return identity;
+    /* Temporary workaround until the gateway supports multiple identities */
+    return "test1";
 }
 
 const char *
 atlas_psk_get()
 {
-    return psk;
+    //return psk;
+    /* Temporary workaround until the gateway supports multiple identities */
+    return "12345678";
 }
 
