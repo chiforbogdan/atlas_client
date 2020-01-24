@@ -90,7 +90,7 @@ ERR:
     ATLAS_LOGGER_ERROR("Error in completing the keepalive request");
         
     ka_count--;
-    if (!ka_count || (resp_status == ATLAS_COAP_RESP_NOT_FOUND || ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE)) {
+    if (!ka_count) {
         ATLAS_LOGGER_ERROR("Keep-alive count reached 0. Trigger the register procedure");
             
         registered = ATLAS_CLIENT_NOT_REGISTERED;
