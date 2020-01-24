@@ -53,8 +53,13 @@ keepalive_callback(atlas_coap_response_t resp_status, const uint8_t *resp_payloa
 
     ATLAS_LOGGER_DEBUG("Keepalive callback executed");
 
-    if (resp_status != ATLAS_COAP_RESP_OK)
+    if (resp_status != ATLAS_COAP_RESP_OK) {
+        /* Force registration immediately */
+        if (resp_status == ATLAS_COAP_RESP_NOT_FOUND || resp_status == ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE)
+            ka_count = 1;
+
         goto ERR;
+    }
 
     /* Validate token */
     if (!resp_payload) {
@@ -85,7 +90,7 @@ ERR:
     ATLAS_LOGGER_ERROR("Error in completing the keepalive request");
         
     ka_count--;
-    if (!ka_count) {
+    if (!ka_count || (resp_status == ATLAS_COAP_RESP_NOT_FOUND || ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE)) {
         ATLAS_LOGGER_ERROR("Keep-alive count reached 0. Trigger the register procedure");
             
         registered = ATLAS_CLIENT_NOT_REGISTERED;
