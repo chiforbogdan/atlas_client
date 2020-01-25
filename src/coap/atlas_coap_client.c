@@ -26,6 +26,9 @@ typedef struct _atlas_coap_client_req
     /* CoAP session */
     coap_session_t *session;
 
+    /* CoAP request URI*/
+    char *uri;
+
     /* CoAP request token */
     uint32_t token;
 
@@ -202,7 +205,7 @@ message_handler(struct coap_context_t *ctx,
 
     if (received->type == COAP_MESSAGE_RST) {
         ATLAS_LOGGER_INFO("CoAP client: got RST as response");
-        ent->callback(ATLAS_COAP_RESP_RESET, NULL, 0);
+        ent->callback(ent->uri, ATLAS_COAP_RESP_RESET, NULL, 0);
 	return;
     }
 
@@ -213,13 +216,13 @@ message_handler(struct coap_context_t *ctx,
         coap_get_data(received, &resp_payload_len, &resp_payload);
 
 	/* Call the higher layer application callback */
-        ent->callback(ATLAS_COAP_RESP_OK, resp_payload, resp_payload_len);
+        ent->callback(ent->uri, ATLAS_COAP_RESP_OK, resp_payload, resp_payload_len);
     } else if (COAP_RESPONSE_CLASS(received->code) == 4) {
         ATLAS_LOGGER_DEBUG("CoAP client: Response code is 4XX");
-        ent->callback(ATLAS_COAP_RESP_NOT_FOUND, NULL, 0);
+        ent->callback(ent->uri, ATLAS_COAP_RESP_NOT_FOUND, NULL, 0);
     } else {
         ATLAS_LOGGER_DEBUG("CoAP client: Response code is UNKNOWN");
-        ent->callback(ATLAS_COAP_RESP_UNKNOWN, NULL, 0);
+        ent->callback(ent->uri, ATLAS_COAP_RESP_UNKNOWN, NULL, 0);
     }
 
 }
@@ -247,6 +250,7 @@ coap_client_sched_callback(int fd)
 	        atlas_alarm_cancel(p->alarm_id);
 		coap_session_release(p->session);
 	        coap_free_context(p->ctx);
+                free(p->uri);
 	        free(p);
 	    }
 	    break;
@@ -263,7 +267,7 @@ static void request_alarm_cb(atlas_alarm_id_t alarm_id)
 
     for (p = req_entry; p; p = p->next) {
         if (p->alarm_id == alarm_id) {
-            p->callback(ATLAS_COAP_RESP_TIMEOUT, NULL, 0);
+            p->callback(p->uri, ATLAS_COAP_RESP_TIMEOUT, NULL, 0);
 
             if (p == req_entry)
                 req_entry = req_entry->next;
@@ -282,8 +286,8 @@ static void request_alarm_cb(atlas_alarm_id_t alarm_id)
 }
 
 static atlas_status_t
-add_request(coap_context_t *ctx, coap_session_t *session, uint32_t token,
-            uint16_t timeout, atlas_coap_client_cb_t callback)
+add_request(coap_context_t *ctx, coap_session_t *session, const char *uri,
+            uint32_t token, uint16_t timeout, atlas_coap_client_cb_t callback)
 {
     int fd;
     atlas_coap_client_req_t *entry, *p;
@@ -292,6 +296,8 @@ add_request(coap_context_t *ctx, coap_session_t *session, uint32_t token,
     entry = (atlas_coap_client_req_t*) malloc(sizeof(atlas_coap_client_req_t));
     entry->ctx = ctx;
     entry->session = session;
+    entry->uri = malloc(strlen(uri) + 1);
+    strcpy(entry->uri, uri);
     entry->token = token;
     entry->callback = callback;
     entry->dirty = 0;
@@ -328,6 +334,7 @@ add_request(coap_context_t *ctx, coap_session_t *session, uint32_t token,
 
     return ATLAS_OK; 
 ERR:
+    free(entry->uri);
     free(entry);
     
     return status;
@@ -476,7 +483,7 @@ atlas_coap_client_request(const char *uri, atlas_coap_method_t method,
         coap_add_data(req_pdu, req_payload_len, req_payload);
 
     /* Chain request */
-    status = add_request(ctx, session, token, timeout, cb);
+    status = add_request(ctx, session, uri, token, timeout, cb);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Cannot add the CoAP request to the request chain");
         goto ERR;

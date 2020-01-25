@@ -7,6 +7,7 @@
 #include "coap/atlas_coap_client.h"
 #include "identity/atlas_identity.h"
 #include "register/atlas_register.h"
+#include "telemetry/atlas_telemetry_features.h"
 
 int main(int argc, char **argv)
 {
@@ -25,6 +26,9 @@ int main(int argc, char **argv)
         ATLAS_LOGGER_INFO("Cannot set client DTLS info");
         return -1;
     }
+
+    /* Init telemetry features */
+    atlas_telemetry_features_init();
 
     /* Init registration and keepalive */
     atlas_register_start();

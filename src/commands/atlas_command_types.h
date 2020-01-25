@@ -12,6 +12,9 @@ typedef enum _atlas_cmd_type
     /* Identity command: payload is the client identity */
     ATLAS_CMD_IDENTITY,
 
+    /* Telemetry hostname command: payload is client hostname */
+    ATLAS_CMD_TELEMETRY_HOSTNAME,
+
 } atlas_cmd_type_t;
 
 #endif /* __ATLAS_COMMAND_TYPE_H__ */

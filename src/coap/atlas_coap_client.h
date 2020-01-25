@@ -9,7 +9,7 @@
 
 #define ATLAS_COAP_CLIENT_DEFAULT_TIMEOUT_MS (5000)
 
-typedef void (*atlas_coap_client_cb_t)(atlas_coap_response_t resp_status, const uint8_t *resp_payload,
+typedef void (*atlas_coap_client_cb_t)(const char *uri_path, atlas_coap_response_t resp_status, const uint8_t *resp_payload,
 size_t resp_payload_len);
 
 /**

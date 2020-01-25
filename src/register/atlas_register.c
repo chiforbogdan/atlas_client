@@ -7,6 +7,7 @@
 #include "../coap/atlas_coap_client.h"
 #include "../coap/atlas_coap_response.h"
 #include "../alarm/atlas_alarm.h"
+#include "../telemetry/atlas_telemetry.h"
 
 #define ATLAS_CLIENT_REGISTER_TIMEOUT_MS (5000)
 #define ATLAS_CLIENT_KEEPALIVE_TIMEOUT_MS (20000)
@@ -25,8 +26,8 @@ static atlas_alarm_id_t ka_alarm_id;
 
 static void reg_alarm_callback(atlas_alarm_id_t reg_alarm_id);
 static void keepalive_alarm_callback(atlas_alarm_id_t reg_alarm_id);
-static void reg_callback(atlas_coap_response_t resp_status, const uint8_t *resp_payload, size_t resp_payload_len);
-static void keepalive_callback(atlas_coap_response_t resp_status, const uint8_t *resp_payload, size_t resp_payload_len);
+static void reg_callback(const char *uri, atlas_coap_response_t resp_status, const uint8_t *resp_payload, size_t resp_payload_len);
+static void keepalive_callback(const char *uri, atlas_coap_response_t resp_status, const uint8_t *resp_payload, size_t resp_payload_len);
 static void send_keepalive_command();
 static void send_register_command();
 
@@ -47,7 +48,8 @@ reg_alarm_callback(atlas_alarm_id_t reg_alarm_id)
 }
 
 static void
-keepalive_callback(atlas_coap_response_t resp_status, const uint8_t *resp_payload, size_t resp_payload_len)
+keepalive_callback(const char *uri, atlas_coap_response_t resp_status,
+                   const uint8_t *resp_payload, size_t resp_payload_len)
 {
     uint16_t token;
 
@@ -103,7 +105,8 @@ ERR:
 }
 
 static void
-reg_callback(atlas_coap_response_t resp_status, const uint8_t *resp_payload, size_t resp_payload_len)
+reg_callback(const char *uri, atlas_coap_response_t resp_status,
+             const uint8_t *resp_payload, size_t resp_payload_len)
 {
     ATLAS_LOGGER_DEBUG("Register callback executed");
 
@@ -120,6 +123,9 @@ reg_callback(atlas_coap_response_t resp_status, const uint8_t *resp_payload, siz
     ATLAS_LOGGER_INFO("Registration to gateway is COMPLETED!");
 
     registered = ATLAS_CLIENT_REGISTERED;
+
+    /* Push all telemetry features to gateway */
+    atlas_telemetry_push_all();
     
     /* Start keep-alive timer */
     ka_alarm_id = atlas_alarm_set(ATLAS_CLIENT_KEEPALIVE_TIMEOUT_MS,

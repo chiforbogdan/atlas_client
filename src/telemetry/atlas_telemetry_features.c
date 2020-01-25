@@ -1,0 +1,68 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include "atlas_telemetry_features.h"
+#include "atlas_telemetry.h"
+#include "../logger/atlas_logger.h"
+#include "../commands/atlas_command_types.h"
+#include "../commands/atlas_command.h"
+
+#define ATLAS_HOSTNAME_FILE "/etc/hostname"
+#define ATLAS_HOSTNAME_MAX_LEN (32)
+
+static void
+atlas_telemetry_payload_hostname(uint8_t **payload, uint16_t *payload_len)
+{
+    atlas_cmd_batch_t *cmd_batch;
+    uint8_t *cmd_buf = NULL;
+    uint16_t cmd_len = 0;
+    char hostname[ATLAS_HOSTNAME_MAX_LEN + 1] = { 0 };
+    int fd;
+    int len;
+
+    ATLAS_LOGGER_INFO("Get payload for hostname telemetry feature"); 
+
+    fd = open(ATLAS_HOSTNAME_FILE, O_RDONLY);
+    if (fd < 0) {
+        ATLAS_LOGGER_ERROR("Error when reading hostname");
+        return;
+    }
+
+    len = read(fd, hostname, sizeof(hostname) - 1);
+    close (fd);
+
+    if (len  <= 0)
+        return;
+
+
+    /* Add hostname command */
+    cmd_batch = atlas_cmd_batch_new();
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_TELEMETRY_HOSTNAME, strlen(hostname), (uint8_t *)hostname);
+    atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
+
+    *payload = malloc(cmd_len);
+    memcpy(*payload, cmd_buf, cmd_len);
+    *payload_len = cmd_len;
+
+    atlas_cmd_batch_free(cmd_batch);
+}
+
+static void
+atlas_telemetry_add_hostname()
+{
+    ATLAS_LOGGER_DEBUG("Add hostname telemetry feature");
+
+    atlas_telemetry_add("coaps://127.0.0.1:10200/gateway/telemetry/hostname", atlas_telemetry_payload_hostname);
+}
+
+void
+atlas_telemetry_features_init()
+{
+    ATLAS_LOGGER_DEBUG("Init telemetry features...");
+
+    /* Add hostname feature */
+    atlas_telemetry_add_hostname();
+}
