@@ -15,8 +15,47 @@ typedef enum _atlas_cmd_type
      /* Telemetry hostname command: payload is client hostname */
     ATLAS_CMD_TELEMETRY_HOSTNAME,
 
-   /* Telemetry kernel info command: payload is client kernel info  */
+    /* Telemetry kernel info command: payload is client kernel info */
     ATLAS_CMD_TELEMETRY_KERN_INFO,
+    
+    /* Telemetry sysinfo uptime command: payload is number of seconds since boot */
+    ATLAS_CMD_TELEMETRY_SYSINFO_UPTIME,
+
+    /* Telemetry sysinfo total ram command: payload is total ram */
+    ATLAS_CMD_TELEMETRY_SYSINFO_TOTALRAM,
+
+    /* Telemetry sysinfo free ram command: payload is free ram */
+    ATLAS_CMD_TELEMETRY_SYSINFO_FREERAM,
+
+    /* Telemetry sysinfo shared ram command: payload is shared ram */
+    ATLAS_CMD_TELEMETRY_SYSINFO_SHAREDRAM,
+
+    /* Telemetry sysinfo buffer ram command: payload is buffer ram */
+    ATLAS_CMD_TELEMETRY_SYSINFO_BUFFERRAM,
+
+    /* Telemetry sysinfo total swap command: payload is total swap */
+    ATLAS_CMD_TELEMETRY_SYSINFO_TOTALSWAP,
+
+    /* Telemetry sysinfo free swap command: payload is free swap */
+    ATLAS_CMD_TELEMETRY_SYSINFO_FREESWAP,
+
+    /* Telemetry sysinfo procs command: payload is number of processes */
+    ATLAS_CMD_TELEMETRY_SYSINFO_PROCS,
+
+    /* Telemetry sysinfo total high command: payload is total high memory size */
+    ATLAS_CMD_TELEMETRY_SYSINFO_TOTALHIGH,
+
+    /* Telemetry sysinfo free high command: payload is available high memory size */
+    ATLAS_CMD_TELEMETRY_SYSINFO_FREEHIGH,
+
+    /* Telemetry sysinfo load 1 command: payload is 1 minute load average */
+    ATLAS_CMD_TELEMETRY_SYSINFO_LOAD1,
+
+    /* Telemetry sysinfo load 5 command: payload is 5 minutes load average */
+    ATLAS_CMD_TELEMETRY_SYSINFO_LOAD5,
+
+   /* Telemetry sysinfo load 15 command: payload is 15 minutes load average */
+    ATLAS_CMD_TELEMETRY_SYSINFO_LOAD15,
 
 } atlas_cmd_type_t;
 

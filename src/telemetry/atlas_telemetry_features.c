@@ -1,6 +1,7 @@
 #include "../logger/atlas_logger.h"
 #include "atlas_telemetry_hostname.h"
 #include "atlas_telemetry_kern_info.h"
+#include "atlas_telemetry_sysinfo.h"
 
 void
 atlas_telemetry_features_init()
@@ -12,4 +13,7 @@ atlas_telemetry_features_init()
 
     /* Add kernel info feature */
     atlas_telemetry_add_kern_info();
+
+    /* Add sysinfo feature */
+    atlas_telemetry_add_sysinfo();
 }
