@@ -97,6 +97,8 @@ atlas_telemetry_add(const char *uri, atlas_telemetry_payload_cb payload_cb)
     if (features_) {
         p = features_;
         while(p->next) p = p->next;
+        
+        p->next = entry;
     } else
         features_ = entry;
 }
