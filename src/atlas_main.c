@@ -27,19 +27,19 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    /* Init telemetry features */
-    atlas_telemetry_features_init();
-
     /* Init registration and keepalive */
     atlas_register_start();
 
     /* Start server */
-    if (atlas_coap_server_start("127.0.0.1", "10001", ATLAS_COAP_SERVER_MODE_BOTH, "12345") != ATLAS_OK) {
+    if (atlas_coap_server_start("127.0.0.1", "10001", ATLAS_COAP_SERVER_MODE_BOTH, atlas_psk_get()) != ATLAS_OK) {
         ATLAS_LOGGER_INFO("Cannot start CoAP server");
         return -1;
     }
 
     ATLAS_LOGGER_INFO("CoAP server started");
+    
+    /* Init telemetry features */
+    atlas_telemetry_features_init();
 
     /* Run scheduler main loop */
     atlas_sched_loop();
