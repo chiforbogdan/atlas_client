@@ -188,6 +188,12 @@ send_register_command()
     atlas_cmd_batch_free(cmd_batch);
 }
 
+uint8_t
+atlas_is_registered()
+{
+    return registered;
+}
+
 void
 atlas_register_start()
 {

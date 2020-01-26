@@ -3,6 +3,7 @@
 #include "atlas_telemetry.h"
 #include "../logger/atlas_logger.h"
 #include "../coap/atlas_coap_client.h"
+#include "../register/atlas_register.h"
 
 #define ATLAS_CLIENT_TELEMETRY_FEATURE_TIMEOUT_MS (40000)
 
@@ -60,6 +61,12 @@ atlas_telemetry_push(const atlas_telemetry_t *feature)
     atlas_status_t status;
 
     ATLAS_LOGGER_DEBUG("Pushing telemetry feature...");
+
+    /* If the client is not registered to gateway, do not push the telemetry feature */
+    if (!atlas_is_registered()) {
+        ATLAS_LOGGER_ERROR("Client is not registered to gateway. Skipping feature...");
+        return;
+    }
 
     /* Get feature payload */
     feature->payload_cb(&payload, &payload_len);
