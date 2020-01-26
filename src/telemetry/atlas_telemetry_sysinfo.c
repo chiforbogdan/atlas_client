@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/sysinfo.h>
-#include <arpa/inet.h>
 #include "atlas_telemetry_sysinfo.h"
 #include "../logger/atlas_logger.h"
 #include "../commands/atlas_command.h"
@@ -11,6 +10,7 @@
 #include "../identity/atlas_identity.h"
 #include "../coap/atlas_coap_server.h"
 #include "atlas_telemetry.h"
+#include "atlas_alert_utils.h"
 
 #define ATLAS_SYSINFO_FEATURE_MAX_LEN (32)
 
@@ -447,65 +447,26 @@ atlas_coap_response_t
 atlas_telemetry_alert_cb(const char *uri_path, const uint8_t *req_payload, size_t req_payload_len,
                          uint8_t **resp_payload, size_t *resp_payload_len)
 {
-    atlas_cmd_batch_t *cmd_batch;
-    const atlas_cmd_t *cmd;
     atlas_status_t status;
-    uint16_t ext_push, int_scan;
+    uint16_t *ext_push = NULL;
+    uint16_t *int_scan = NULL;
     char *threshold = NULL;
-    uint8_t ext_push_found = 0, int_scan_found = 0;
 
     ATLAS_LOGGER_DEBUG("Telemetry sysinfo alert end-point called");
 
-    cmd_batch = atlas_cmd_batch_new();
+    status = atlas_alert_cmd_parse(req_payload, req_payload_len,
+                                   &ext_push, &int_scan, &threshold);
 
-    status = atlas_cmd_batch_set_raw(cmd_batch, req_payload, req_payload_len);
     if (status != ATLAS_OK) {
-        ATLAS_LOGGER_ERROR("Corrupted command received on the telemetry sysinfo alert end-point");
-        goto ERR;
+        ATLAS_LOGGER_DEBUG("Telemetry sysinfo alert end-point encountered an error when parsing the command");
+        return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
     }
 
-    cmd = atlas_cmd_batch_get(cmd_batch, NULL);
-    while (cmd) {
-        if (cmd->type == ATLAS_CMD_TELEMETRY_ALERT_EXT_PUSH_RATE && cmd->length == sizeof(uint16_t)) {
-            memcpy(&ext_push, cmd->value, sizeof(uint16_t));
-            ext_push = ntohs(ext_push);
-            ext_push_found = 1;
-        } else if (cmd->type == ATLAS_CMD_TELEMETRY_ALERT_INT_SCAN_RATE && cmd->length == sizeof(uint16_t)) {
-            memcpy(&int_scan, cmd->value, sizeof(uint16_t));
-            int_scan = ntohs(int_scan);
-            int_scan_found = 1;
-        } else if (cmd->type == ATLAS_CMD_TELEMETRY_ALERT_THRESHOLD && cmd->length > 0) {
-            threshold = calloc(1, cmd->length + 1);
-            memcpy(threshold, cmd->value, cmd->length);
-        }
-        
-        cmd = atlas_cmd_batch_get(cmd_batch, cmd);
-    }
-
-    if (!ext_push_found) {
-        ATLAS_LOGGER_ERROR("External push rate was not found in the telemetry alert request");
-        goto ERR;
-    }
-    if (!int_scan_found && threshold) {
-        ATLAS_LOGGER_ERROR("Internal scan was not found while threshold was found in the telemetry alert request");
-        goto ERR;
-    }
-    if (!threshold && int_scan_found) {
-        ATLAS_LOGGER_ERROR("Threshold was not found while internal scan was foudn in the telemetry alert request");
-        goto ERR;
-    }
-
-    /* TODO install alert */
-
+    free(ext_push);
+    free(int_scan);
     free(threshold);
-
+ 
     return ATLAS_COAP_RESP_OK;
-
-ERR:
-    free(threshold);
-    atlas_cmd_batch_free(cmd_batch);
-    
-    return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
 }
 
 void
