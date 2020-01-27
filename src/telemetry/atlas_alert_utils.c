@@ -20,6 +20,9 @@ atlas_status_t atlas_alert_cmd_parse(const uint8_t *buf, uint16_t buf_len,
     if (!ext_push || !int_scan || !threshold)
         return ATLAS_INVALID_INPUT;
 
+    *int_scan = NULL;
+    *threshold = NULL;
+
     cmd_batch = atlas_cmd_batch_new();
 
     status = atlas_cmd_batch_set_raw(cmd_batch, buf, buf_len);
@@ -27,9 +30,6 @@ atlas_status_t atlas_alert_cmd_parse(const uint8_t *buf, uint16_t buf_len,
         ATLAS_LOGGER_ERROR("Corrupted telemetry alert command");
         goto ERR;
     }
-
-    *int_scan = NULL;
-    *threshold = NULL;
 
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
     while (cmd) {
