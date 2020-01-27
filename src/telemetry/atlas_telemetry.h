@@ -27,4 +27,19 @@ void atlas_telemetry_del(const char *uri);
 */
 void atlas_telemetry_push_all();
 
+/**
+ * @brief Set external push rate for a telemetry feature
+ * @param[in] uri Telemetry feature URI
+ * @param[in] ext_push External push interval in seconds. If this value if 0, then
+ * the telemetry feature will be pushed right away to the gateway
+ */
+void atlas_telemetry_ext_push_set(const char *uri, uint16_t ext_push);
+
+/**
+ * @brief Set internal scan rate for a telemetry feature
+ * @param[in] uri Telemetry feature URI
+ * @param[in] int_scan Internal scan interval in seconds
+ */
+void atlas_telemetry_int_scan_set(const char *uri, uint16_t ext_push);
+
 #endif /* __ATLAS_TELEMETRY_H__ */

@@ -6,6 +6,7 @@
 
 #define ATLAS_ALARM_RUN_ONCE           (1)
 #define ATLAS_ALARM_RUN_MULTIPLE_TIMES (0)
+#define ATLAS_ALARM_SEC_TO_MS(SEC)     ((SEC) * 1000)
 
 typedef int atlas_alarm_id_t;
 

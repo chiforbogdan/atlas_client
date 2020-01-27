@@ -4,6 +4,7 @@
 #include "../logger/atlas_logger.h"
 #include "../coap/atlas_coap_client.h"
 #include "../register/atlas_register.h"
+#include "../alarm/atlas_alarm.h"
 
 #define ATLAS_CLIENT_TELEMETRY_FEATURE_TIMEOUT_MS (40000)
 
@@ -15,6 +16,12 @@ typedef struct _atlas_telemetry
     /* Telemetry callback for obtaining the feature payload */
     atlas_telemetry_payload_cb payload_cb;
 
+    /* External push interval alarm id */
+    atlas_alarm_id_t ext_push_id;
+
+    /* Internal scan interval alarm id */
+    atlas_alarm_id_t int_scan_id;
+
     /* Next element in the chain */
     struct _atlas_telemetry *next;
 } atlas_telemetry_t;
@@ -23,6 +30,17 @@ typedef struct _atlas_telemetry
 static atlas_telemetry_t *features_;
 
 static void atlas_telemetry_push(const atlas_telemetry_t *);
+
+static void
+ext_push_alarm_cb(atlas_alarm_id_t alarm_id)
+{
+    ATLAS_LOGGER_DEBUG("Execute alarm callback for external push interval");
+}
+static void
+int_scan_alarm_cb(atlas_alarm_id_t alarm_id)
+{
+    ATLAS_LOGGER_DEBUG("Execute alarm callback for internal scan interval");
+}
 
 static void
 telemetry_callback(const char *uri, atlas_coap_response_t resp_status,
@@ -99,6 +117,8 @@ atlas_telemetry_add(const char *uri, atlas_telemetry_payload_cb payload_cb)
     entry = (atlas_telemetry_t *) malloc(sizeof(atlas_telemetry_t));
     strncpy(entry->uri, uri, sizeof(entry->uri) - 1);
     entry->payload_cb = payload_cb;
+    entry->ext_push_id = -1;
+    entry->int_scan_id = -1;
     entry->next = NULL;
     
     if (features_) {
@@ -134,7 +154,8 @@ atlas_telemetry_del(const char *uri)
     }
 }
 
-void atlas_telemetry_push_all()
+void
+atlas_telemetry_push_all()
 {
     atlas_telemetry_t *p;
 
@@ -143,3 +164,62 @@ void atlas_telemetry_push_all()
     for (p = features_; p; p = p->next)
         atlas_telemetry_push(p);
 }
+
+void
+atlas_telemetry_ext_push_set(const char *uri, uint16_t ext_push)
+{
+    atlas_telemetry_t *p;
+
+    if (!uri)
+        return;
+
+    ATLAS_LOGGER_DEBUG("Set external push rate for telemetry feature");
+
+    for (p = features_; p; p = p->next) {
+        if (!strcmp(p->uri, uri)) {
+            /* If external push value is 0, then push the feature right away */
+            if (!ext_push) {
+                atlas_telemetry_push(p);
+		break;
+            }
+
+	    /* Schedule alarm for external push */
+            if (p->ext_push_id >= 0)
+                atlas_alarm_cancel(p->ext_push_id);
+	    
+	    p->ext_push_id = atlas_alarm_set(ATLAS_ALARM_SEC_TO_MS(ext_push),
+                                             ext_push_alarm_cb, ATLAS_ALARM_RUN_MULTIPLE_TIMES);
+	    if (p->ext_push_id < 0)
+                ATLAS_LOGGER_ERROR("Error when scheduling alarm for external push interval");
+
+	    break;
+        }
+    }
+}
+
+void
+atlas_telemetry_int_scan_set(const char *uri, uint16_t int_scan)
+{
+    atlas_telemetry_t *p;
+
+    if (!uri || !int_scan)
+        return;
+
+    ATLAS_LOGGER_DEBUG("Set internal scan rate for telemetry feature");
+
+    for (p = features_; p; p = p->next) {
+        if (!strcmp(p->uri, uri)) {
+	    /* Schedule alarm for internal scan */
+            if (p->int_scan_id >= 0)
+                atlas_alarm_cancel(p->int_scan_id);
+	    
+	    p->int_scan_id = atlas_alarm_set(ATLAS_ALARM_SEC_TO_MS(int_scan),
+                                             int_scan_alarm_cb, ATLAS_ALARM_RUN_MULTIPLE_TIMES);
+	    if (p->int_scan_id < 0)
+                ATLAS_LOGGER_ERROR("Error when scheduling alarm for external push interval");
+
+	    break;
+        }
+    }
+}
+

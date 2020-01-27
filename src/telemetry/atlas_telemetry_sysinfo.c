@@ -462,6 +462,11 @@ atlas_telemetry_alert_cb(const char *uri_path, const uint8_t *req_payload, size_
         return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
     }
 
+    atlas_telemetry_ext_push_set("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/procs", ext_push);
+    
+    if (int_scan)
+        atlas_telemetry_int_scan_set("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/procs", *int_scan);
+
     free(int_scan);
     free(threshold);
  
