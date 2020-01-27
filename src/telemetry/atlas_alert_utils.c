@@ -7,10 +7,11 @@
 #include "../logger/atlas_logger.h"
 
 atlas_status_t atlas_alert_cmd_parse(const uint8_t *buf, uint16_t buf_len,
-                                     uint16_t **ext_push, uint16_t **int_scan, char **threshold)
+                                     uint16_t *ext_push, uint16_t **int_scan, char **threshold)
 {
     atlas_cmd_batch_t *cmd_batch;
     const atlas_cmd_t *cmd;
+    uint8_t ext_push_found = 0;
     atlas_status_t status;
 
     if (!buf || !buf_len)
@@ -27,27 +28,20 @@ atlas_status_t atlas_alert_cmd_parse(const uint8_t *buf, uint16_t buf_len,
         goto ERR;
     }
 
-    *ext_push = NULL;
     *int_scan = NULL;
     *threshold = NULL;
 
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
     while (cmd) {
-        if (cmd->type == ATLAS_CMD_TELEMETRY_ALERT_EXT_PUSH_RATE &&
-            cmd->length == sizeof(uint16_t)) {
-            
-            *ext_push = malloc(sizeof(uint16_t)); 
-            memcpy(*ext_push, cmd->value, sizeof(uint16_t));
-            **ext_push = ntohs(**ext_push);
-        } else if (cmd->type == ATLAS_CMD_TELEMETRY_ALERT_INT_SCAN_RATE &&
-                   cmd->length == sizeof(uint16_t)) {
-        
+        if (cmd->type == ATLAS_CMD_TELEMETRY_ALERT_EXT_PUSH_RATE && cmd->length == sizeof(uint16_t)) {
+            memcpy(ext_push, cmd->value, sizeof(uint16_t));
+            *ext_push = ntohs(*ext_push);
+	    ext_push_found = 1;
+        } else if (cmd->type == ATLAS_CMD_TELEMETRY_ALERT_INT_SCAN_RATE && cmd->length == sizeof(uint16_t)) {
             *int_scan = malloc(sizeof(uint16_t));    
             memcpy(*int_scan, cmd->value, sizeof(uint16_t));
             **int_scan = ntohs(**int_scan);
-        } else if (cmd->type == ATLAS_CMD_TELEMETRY_ALERT_THRESHOLD &&
-                   cmd->length > 0) {
-            
+        } else if (cmd->type == ATLAS_CMD_TELEMETRY_ALERT_THRESHOLD && cmd->length > 0) { 
             *threshold = calloc(1, cmd->length + 1);
             memcpy(*threshold, cmd->value, cmd->length);
         }
@@ -55,10 +49,11 @@ atlas_status_t atlas_alert_cmd_parse(const uint8_t *buf, uint16_t buf_len,
         cmd = atlas_cmd_batch_get(cmd_batch, cmd);
     }
      
-    if (!(*ext_push)) {
+    if (!ext_push_found) {
         ATLAS_LOGGER_ERROR("External push rate was not found in the telemetry alert request");
         goto ERR;
     }
+    /* Internal scan and threshold must be provided together or might be missing */
     if (!(*int_scan) && (*threshold)) {
         ATLAS_LOGGER_ERROR("Internal scan was not found while threshold was found in the telemetry alert request");
         goto ERR;
@@ -68,13 +63,9 @@ atlas_status_t atlas_alert_cmd_parse(const uint8_t *buf, uint16_t buf_len,
         goto ERR;
     }
 
-
     return ATLAS_OK;
 
 ERR:
-    free(*ext_push);
-    *ext_push = NULL;
-
     free(*int_scan);
     *int_scan = NULL;
     

@@ -448,7 +448,7 @@ atlas_telemetry_alert_cb(const char *uri_path, const uint8_t *req_payload, size_
                          uint8_t **resp_payload, size_t *resp_payload_len)
 {
     atlas_status_t status;
-    uint16_t *ext_push = NULL;
+    uint16_t ext_push;
     uint16_t *int_scan = NULL;
     char *threshold = NULL;
 
@@ -462,7 +462,6 @@ atlas_telemetry_alert_cb(const char *uri_path, const uint8_t *req_payload, size_
         return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
     }
 
-    free(ext_push);
     free(int_scan);
     free(threshold);
  
