@@ -46,6 +46,7 @@ push_alert_alarm_cb(atlas_alarm_id_t alarm_id)
         }
     }
 }
+
 static void
 threshold_alert_alarm_cb(atlas_alarm_id_t alarm_id)
 {
