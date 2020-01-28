@@ -531,7 +531,7 @@ atlas_push_alert_procs_cb(const char *uri_path, const uint8_t *req_payload, size
         return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
     }
 
-    atlas_telemetry_ext_push_set("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/procs", push_rate);
+    atlas_telemetry_push_set("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/procs", push_rate);
  
     return ATLAS_COAP_RESP_OK;
 }
@@ -553,7 +553,7 @@ atlas_threshold_alert_procs_cb(const char *uri_path, const uint8_t *req_payload,
         return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
     }
 
-    atlas_telemetry_int_scan_set("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/procs", scan_rate);
+    atlas_telemetry_threshold_set("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/procs", scan_rate);
 
     free(threshold);
  

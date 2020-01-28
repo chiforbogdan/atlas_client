@@ -16,11 +16,11 @@ typedef struct _atlas_telemetry
     /* Telemetry callback for obtaining the feature payload */
     atlas_telemetry_payload_cb payload_cb;
 
-    /* External push interval alarm id */
-    atlas_alarm_id_t ext_push_id;
+    /* Push alert interval alarm id */
+    atlas_alarm_id_t push_id;
 
-    /* Internal scan interval alarm id */
-    atlas_alarm_id_t int_scan_id;
+    /* Threshold alert scan interval alarm id */
+    atlas_alarm_id_t threshold_id;
 
     /* Next element in the chain */
     struct _atlas_telemetry *next;
@@ -32,14 +32,34 @@ static atlas_telemetry_t *features_;
 static void atlas_telemetry_push(const atlas_telemetry_t *, uint8_t use_threshold);
 
 static void
-ext_push_alarm_cb(atlas_alarm_id_t alarm_id)
+push_alert_alarm_cb(atlas_alarm_id_t alarm_id)
 {
+    atlas_telemetry_t *p;
+    
     ATLAS_LOGGER_DEBUG("Execute alarm callback for external push interval");
+
+    /* Send the push alarm */
+    for (p = features_; p; p = p->next) {
+        if (p->push_id == alarm_id) {
+            atlas_telemetry_push(p, ATLAS_TELEMETRY_SKIP_THRESHOLD);
+            break;
+        }
+    }
 }
 static void
-int_scan_alarm_cb(atlas_alarm_id_t alarm_id)
+threshold_alert_alarm_cb(atlas_alarm_id_t alarm_id)
 {
+    atlas_telemetry_t *p;
+    
     ATLAS_LOGGER_DEBUG("Execute alarm callback for internal scan interval");
+
+    /* Send the threshold alarm */
+    for (p = features_; p; p = p->next) {
+        if (p->threshold_id == alarm_id) {
+            atlas_telemetry_push(p, ATLAS_TELEMETRY_USE_THRESHOLD);
+            break;
+        }
+    }
 }
 
 static void
@@ -117,8 +137,8 @@ atlas_telemetry_add(const char *uri, atlas_telemetry_payload_cb payload_cb)
     entry = (atlas_telemetry_t *) malloc(sizeof(atlas_telemetry_t));
     strncpy(entry->uri, uri, sizeof(entry->uri) - 1);
     entry->payload_cb = payload_cb;
-    entry->ext_push_id = -1;
-    entry->int_scan_id = -1;
+    entry->push_id = -1;
+    entry->threshold_id = -1;
     entry->next = NULL;
     
     if (features_) {
@@ -166,7 +186,7 @@ atlas_telemetry_push_all()
 }
 
 void
-atlas_telemetry_ext_push_set(const char *uri, uint16_t ext_push)
+atlas_telemetry_push_set(const char *uri, uint16_t push_rate)
 {
     atlas_telemetry_t *p;
 
@@ -177,19 +197,19 @@ atlas_telemetry_ext_push_set(const char *uri, uint16_t ext_push)
 
     for (p = features_; p; p = p->next) {
         if (!strcmp(p->uri, uri)) {
-            /* If external push value is 0, then push the feature right away */
-            if (!ext_push) {
+            /* If push rate value is 0, then push the feature right away */
+            if (!push_rate) {
                 atlas_telemetry_push(p, ATLAS_TELEMETRY_SKIP_THRESHOLD);
 		break;
             }
 
 	    /* Schedule alarm for external push */
-            if (p->ext_push_id >= 0)
-                atlas_alarm_cancel(p->ext_push_id);
+            if (p->push_id >= 0)
+                atlas_alarm_cancel(p->push_id);
 	    
-	    p->ext_push_id = atlas_alarm_set(ATLAS_ALARM_SEC_TO_MS(ext_push),
-                                             ext_push_alarm_cb, ATLAS_ALARM_RUN_MULTIPLE_TIMES);
-	    if (p->ext_push_id < 0)
+	    p->push_id = atlas_alarm_set(ATLAS_ALARM_SEC_TO_MS(push_rate),
+                                         push_alert_alarm_cb, ATLAS_ALARM_RUN_MULTIPLE_TIMES);
+	    if (p->push_id < 0)
                 ATLAS_LOGGER_ERROR("Error when scheduling alarm for external push interval");
 
 	    break;
@@ -198,11 +218,11 @@ atlas_telemetry_ext_push_set(const char *uri, uint16_t ext_push)
 }
 
 void
-atlas_telemetry_int_scan_set(const char *uri, uint16_t int_scan)
+atlas_telemetry_threshold_set(const char *uri, uint16_t scan_rate)
 {
     atlas_telemetry_t *p;
 
-    if (!uri || !int_scan)
+    if (!uri || !scan_rate)
         return;
 
     ATLAS_LOGGER_DEBUG("Set internal scan rate for telemetry feature");
@@ -210,12 +230,12 @@ atlas_telemetry_int_scan_set(const char *uri, uint16_t int_scan)
     for (p = features_; p; p = p->next) {
         if (!strcmp(p->uri, uri)) {
 	    /* Schedule alarm for internal scan */
-            if (p->int_scan_id >= 0)
-                atlas_alarm_cancel(p->int_scan_id);
+            if (p->threshold_id >= 0)
+                atlas_alarm_cancel(p->threshold_id);
 	    
-	    p->int_scan_id = atlas_alarm_set(ATLAS_ALARM_SEC_TO_MS(int_scan),
-                                             int_scan_alarm_cb, ATLAS_ALARM_RUN_MULTIPLE_TIMES);
-	    if (p->int_scan_id < 0)
+	    p->threshold_id = atlas_alarm_set(ATLAS_ALARM_SEC_TO_MS(scan_rate),
+                                              threshold_alert_alarm_cb, ATLAS_ALARM_RUN_MULTIPLE_TIMES);
+	    if (p->threshold_id < 0)
                 ATLAS_LOGGER_ERROR("Error when scheduling alarm for external push interval");
 
 	    break;
