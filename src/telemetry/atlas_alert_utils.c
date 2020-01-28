@@ -72,6 +72,7 @@ atlas_status_t atlas_alert_threshold_cmd_parse(const uint8_t *buf, uint16_t buf_
     status = atlas_cmd_batch_set_raw(cmd_batch, buf, buf_len);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Corrupted telemetry alert command");
+        status = ATLAS_CORRUPTED_COMMAND;
         goto ERR;
     }
 
@@ -80,6 +81,7 @@ atlas_status_t atlas_alert_threshold_cmd_parse(const uint8_t *buf, uint16_t buf_
         if (cmd->type == ATLAS_CMD_TELEMETRY_ALERT_INT_SCAN_RATE && cmd->length == sizeof(uint16_t)) {
             memcpy(scan_rate, cmd->value, sizeof(uint16_t));
             *scan_rate = ntohs(*scan_rate);
+            scan_found = 1;
         } else if (cmd->type == ATLAS_CMD_TELEMETRY_ALERT_THRESHOLD && cmd->length > 0) { 
             *threshold = calloc(1, cmd->length + 1);
             memcpy(*threshold, cmd->value, cmd->length);
@@ -90,10 +92,12 @@ atlas_status_t atlas_alert_threshold_cmd_parse(const uint8_t *buf, uint16_t buf_
      
     if (!scan_found) {
         ATLAS_LOGGER_ERROR("Internal scan was not found in the telemetry alert request");
+        status = ATLAS_CORRUPTED_COMMAND;
         goto ERR;
     }
     if (!threshold) {
         ATLAS_LOGGER_ERROR("Threshold was not found in the telemetry alert request");
+        status = ATLAS_CORRUPTED_COMMAND;
         goto ERR;
     }
 

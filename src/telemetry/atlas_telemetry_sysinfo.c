@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/sysinfo.h>
+#include <limits.h>
+#include <errno.h>
 #include "atlas_telemetry_sysinfo.h"
 #include "../logger/atlas_logger.h"
 #include "../commands/atlas_command.h"
@@ -13,6 +15,8 @@
 #include "atlas_alert_utils.h"
 
 #define ATLAS_SYSINFO_FEATURE_MAX_LEN (32)
+
+static uint16_t procs_threshold;
 
 static void
 atlas_telemetry_payload_uptime(uint8_t **payload, uint16_t *payload_len,
@@ -305,6 +309,11 @@ atlas_telemetry_payload_procs(uint8_t **payload, uint16_t *payload_len,
         return;
     }
 
+    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD && info.procs < procs_threshold) {
+        ATLAS_LOGGER_INFO("Sysinfo freeswap telemetry feature does not support thresholds");
+        return;
+    }
+
     sprintf(procs, "%u",info.procs);
 
     /* Add sysinfo procs command */
@@ -549,14 +558,24 @@ atlas_threshold_alert_procs_cb(const char *uri_path, const uint8_t *req_payload,
     status = atlas_alert_threshold_cmd_parse(req_payload, req_payload_len, &scan_rate,
                                              &threshold);
     if (status != ATLAS_OK) {
-        ATLAS_LOGGER_DEBUG("Telemetry sysinfo threshold alert end-point encountered an error when parsing the command");
+        ATLAS_LOGGER_ERROR("Telemetry sysinfo threshold alert end-point encountered an error when parsing the command");
+        return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
+    }
+
+    errno = 0;
+    procs_threshold = strtol(threshold, NULL, 10);
+
+    free(threshold);
+   
+    /* Check for various possible errors */
+    if ((errno == ERANGE && (procs_threshold == LONG_MAX || procs_threshold == LONG_MIN))
+            || (errno != 0 && procs_threshold == 0)) {
+        ATLAS_LOGGER_ERROR("Telemetry sysinfo threshold alert end-point encountered an error when parsing the threshold value");
         return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
     }
 
     atlas_telemetry_threshold_set("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/procs", scan_rate);
 
-    free(threshold);
- 
     return ATLAS_COAP_RESP_OK;
 }
 
@@ -583,13 +602,15 @@ atlas_telemetry_add_sysinfo()
     atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/load15", atlas_telemetry_payload_load15);
 
     /* Add sysinfo telemetry alerts */
-    status = atlas_coap_server_add_resource("client/telemetry/sysinfo/procs/alerts/push", ATLAS_COAP_METHOD_PUT, atlas_push_alert_procs_cb);
+    status = atlas_coap_server_add_resource("client/telemetry/sysinfo/procs/alerts/push", ATLAS_COAP_METHOD_PUT,
+                                            atlas_push_alert_procs_cb);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Cannot install sysinfo procs push telemetry alert end-point");
         return;
     }
     
-    status = atlas_coap_server_add_resource("client/telemetry/sysinfo/procs/alerts/threshold", ATLAS_COAP_METHOD_PUT, atlas_threshold_alert_procs_cb);
+    status = atlas_coap_server_add_resource("client/telemetry/sysinfo/procs/alerts/threshold", ATLAS_COAP_METHOD_PUT,
+                                            atlas_threshold_alert_procs_cb);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Cannot install sysinfo procs threshold telemetry alert end-point");
         return;
