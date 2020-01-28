@@ -15,7 +15,8 @@
 #define ATLAS_HOSTNAME_MAX_LEN (32)
 
 static void
-atlas_telemetry_payload_hostname(uint8_t **payload, uint16_t *payload_len)
+atlas_telemetry_payload_hostname(uint8_t **payload, uint16_t *payload_len,
+                                 uint8_t use_threshold)
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -27,6 +28,11 @@ atlas_telemetry_payload_hostname(uint8_t **payload, uint16_t *payload_len)
     int i;
 
     ATLAS_LOGGER_INFO("Get payload for hostname telemetry feature"); 
+
+    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
+        ATLAS_LOGGER_ERROR("Telemetry hostname feature does not support thresholds");
+        return;	
+    }
 
     fd = open(ATLAS_HOSTNAME_FILE, O_RDONLY);
     if (fd < 0) {

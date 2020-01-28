@@ -3,9 +3,11 @@
 
 #include <stdint.h>
 
-#define ATLAS_TELEMETRY_URI_LEN (64)
+#define ATLAS_TELEMETRY_URI_LEN        (64)
+#define ATLAS_TELEMETRY_USE_THRESHOLD  (1)
+#define ATLAS_TELEMETRY_SKIP_THRESHOLD (0)
 
-typedef void (*atlas_telemetry_payload_cb)(uint8_t **, uint16_t*); 
+typedef void (*atlas_telemetry_payload_cb)(uint8_t **, uint16_t*, uint8_t); 
 
 /**
 * @brief Add a telemetry feature

@@ -29,7 +29,7 @@ typedef struct _atlas_telemetry
 /* Telemetry features */
 static atlas_telemetry_t *features_;
 
-static void atlas_telemetry_push(const atlas_telemetry_t *);
+static void atlas_telemetry_push(const atlas_telemetry_t *, uint8_t use_threshold);
 
 static void
 ext_push_alarm_cb(atlas_alarm_id_t alarm_id)
@@ -65,14 +65,14 @@ telemetry_callback(const char *uri, atlas_coap_response_t resp_status,
     /* Try to send the request again */
     for (p = features_; p; p = p->next) {
         if (!strcmp(p->uri, uri)) {
-            atlas_telemetry_push(p);
+            atlas_telemetry_push(p, ATLAS_TELEMETRY_SKIP_THRESHOLD);
             break;
         }
     }
 }
 
 static void
-atlas_telemetry_push(const atlas_telemetry_t *feature)
+atlas_telemetry_push(const atlas_telemetry_t *feature, uint8_t use_threshold)
 {
     uint8_t *payload = NULL;
     uint16_t payload_len = 0;
@@ -87,7 +87,7 @@ atlas_telemetry_push(const atlas_telemetry_t *feature)
     }
 
     /* Get feature payload */
-    feature->payload_cb(&payload, &payload_len);
+    feature->payload_cb(&payload, &payload_len, use_threshold);
     if (!payload || !payload_len) {
         ATLAS_LOGGER_INFO("Feature payload empty. Skipping feature...");
         return;
@@ -162,7 +162,7 @@ atlas_telemetry_push_all()
     ATLAS_LOGGER_INFO("Pushing all telemetry features to gateway...");
 
     for (p = features_; p; p = p->next)
-        atlas_telemetry_push(p);
+        atlas_telemetry_push(p, ATLAS_TELEMETRY_SKIP_THRESHOLD);
 }
 
 void
@@ -179,7 +179,7 @@ atlas_telemetry_ext_push_set(const char *uri, uint16_t ext_push)
         if (!strcmp(p->uri, uri)) {
             /* If external push value is 0, then push the feature right away */
             if (!ext_push) {
-                atlas_telemetry_push(p);
+                atlas_telemetry_push(p, ATLAS_TELEMETRY_SKIP_THRESHOLD);
 		break;
             }
 

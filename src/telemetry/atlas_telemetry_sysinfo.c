@@ -15,7 +15,8 @@
 #define ATLAS_SYSINFO_FEATURE_MAX_LEN (32)
 
 static void
-atlas_telemetry_payload_uptime(uint8_t **payload, uint16_t *payload_len)
+atlas_telemetry_payload_uptime(uint8_t **payload, uint16_t *payload_len,
+                               uint8_t use_threshold)
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -25,6 +26,11 @@ atlas_telemetry_payload_uptime(uint8_t **payload, uint16_t *payload_len)
     char uptime[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
 
     ATLAS_LOGGER_INFO("Get payload for sysinfo uptime telemetry feature");
+
+    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
+        ATLAS_LOGGER_ERROR("Sysinfo uptime telemetry feature does not support thresholds");
+	return;
+    }
 
     if (sysinfo(&info) != 0) {
         ATLAS_LOGGER_ERROR("Error in getting sysinfo uptime");
@@ -48,7 +54,8 @@ atlas_telemetry_payload_uptime(uint8_t **payload, uint16_t *payload_len)
 }
 
 static void
-atlas_telemetry_payload_totalram(uint8_t **payload, uint16_t *payload_len)
+atlas_telemetry_payload_totalram(uint8_t **payload, uint16_t *payload_len,
+                                 uint8_t use_threshold)
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -58,6 +65,11 @@ atlas_telemetry_payload_totalram(uint8_t **payload, uint16_t *payload_len)
     char totalram[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
 
     ATLAS_LOGGER_INFO("Get payload for sysinfo totalram telemetry feature");
+
+    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
+        ATLAS_LOGGER_ERROR("Sysinfo totalram telemetry feature does not support thresholds");
+	return;
+    }
 
     if (sysinfo(&info) != 0) {
         ATLAS_LOGGER_ERROR("Error in getting sysinfo totalram");
@@ -81,7 +93,8 @@ atlas_telemetry_payload_totalram(uint8_t **payload, uint16_t *payload_len)
 }
 
 static void
-atlas_telemetry_payload_freeram(uint8_t **payload, uint16_t *payload_len)
+atlas_telemetry_payload_freeram(uint8_t **payload, uint16_t *payload_len,
+                                uint8_t use_threshold)
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -91,6 +104,11 @@ atlas_telemetry_payload_freeram(uint8_t **payload, uint16_t *payload_len)
     char freeram[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
 
     ATLAS_LOGGER_INFO("Get payload for sysinfo freeram telemetry feature");
+
+    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
+        ATLAS_LOGGER_ERROR("Sysinfo freeram telemetry feature does not support thresholds");
+	return;
+    }
 
     if (sysinfo(&info) != 0) {
         ATLAS_LOGGER_ERROR("Error in getting sysinfo freeram");
@@ -114,7 +132,8 @@ atlas_telemetry_payload_freeram(uint8_t **payload, uint16_t *payload_len)
 }
 
 static void
-atlas_telemetry_payload_sharedram(uint8_t **payload, uint16_t *payload_len)
+atlas_telemetry_payload_sharedram(uint8_t **payload, uint16_t *payload_len,
+                                  uint8_t use_threshold)
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -124,6 +143,11 @@ atlas_telemetry_payload_sharedram(uint8_t **payload, uint16_t *payload_len)
     char sharedram[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
 
     ATLAS_LOGGER_INFO("Get payload for sysinfo sharedram telemetry feature");
+
+    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
+        ATLAS_LOGGER_ERROR("Sysinfo sharedram telemetry feature does not support thresholds");
+	return;
+    }
 
     if (sysinfo(&info) != 0) {
         ATLAS_LOGGER_ERROR("Error in getting sysinfo sharedram");
@@ -147,7 +171,8 @@ atlas_telemetry_payload_sharedram(uint8_t **payload, uint16_t *payload_len)
 }
 
 static void
-atlas_telemetry_payload_bufferram(uint8_t **payload, uint16_t *payload_len)
+atlas_telemetry_payload_bufferram(uint8_t **payload, uint16_t *payload_len,
+                                  uint8_t use_threshold)
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -157,6 +182,11 @@ atlas_telemetry_payload_bufferram(uint8_t **payload, uint16_t *payload_len)
     char bufferram[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
 
     ATLAS_LOGGER_INFO("Get payload for sysinfo bufferram telemetry feature");
+
+    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
+        ATLAS_LOGGER_ERROR("Sysinfo bufferram telemetry feature does not support thresholds");
+	return;
+    }
 
     if (sysinfo(&info) != 0) {
         ATLAS_LOGGER_ERROR("Error in getting sysinfo bufferram");
@@ -180,7 +210,8 @@ atlas_telemetry_payload_bufferram(uint8_t **payload, uint16_t *payload_len)
 }
 
 static void
-atlas_telemetry_payload_totalswap(uint8_t **payload, uint16_t *payload_len)
+atlas_telemetry_payload_totalswap(uint8_t **payload, uint16_t *payload_len,
+                                  uint8_t use_threshold)
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -190,6 +221,11 @@ atlas_telemetry_payload_totalswap(uint8_t **payload, uint16_t *payload_len)
     char totalswap[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
 
     ATLAS_LOGGER_INFO("Get payload for sysinfo totalswap telemetry feature");
+
+    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
+        ATLAS_LOGGER_ERROR("Sysinfo totalswap telemetry feature does not support thresholds");
+	return;
+    }
 
     if (sysinfo(&info) != 0) {
         ATLAS_LOGGER_ERROR("Error in getting sysinfo totalswap");
@@ -213,7 +249,8 @@ atlas_telemetry_payload_totalswap(uint8_t **payload, uint16_t *payload_len)
 }
 
 static void
-atlas_telemetry_payload_freeswap(uint8_t **payload, uint16_t *payload_len)
+atlas_telemetry_payload_freeswap(uint8_t **payload, uint16_t *payload_len,
+                                 uint8_t use_threshold)
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -223,6 +260,11 @@ atlas_telemetry_payload_freeswap(uint8_t **payload, uint16_t *payload_len)
     char freeswap[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
 
     ATLAS_LOGGER_INFO("Get payload for sysinfo freeswap telemetry feature");
+
+    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
+        ATLAS_LOGGER_ERROR("Sysinfo freeswap telemetry feature does not support thresholds");
+	return;
+    }
 
     if (sysinfo(&info) != 0) {
         ATLAS_LOGGER_ERROR("Error in getting sysinfo freeswap");
@@ -246,7 +288,8 @@ atlas_telemetry_payload_freeswap(uint8_t **payload, uint16_t *payload_len)
 }
 
 static void
-atlas_telemetry_payload_procs(uint8_t **payload, uint16_t *payload_len)
+atlas_telemetry_payload_procs(uint8_t **payload, uint16_t *payload_len,
+                              uint8_t use_threshold)
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -279,7 +322,8 @@ atlas_telemetry_payload_procs(uint8_t **payload, uint16_t *payload_len)
 }
 
 static void
-atlas_telemetry_payload_totalhigh(uint8_t **payload, uint16_t *payload_len)
+atlas_telemetry_payload_totalhigh(uint8_t **payload, uint16_t *payload_len,
+                                  uint8_t use_threshold)
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -289,6 +333,11 @@ atlas_telemetry_payload_totalhigh(uint8_t **payload, uint16_t *payload_len)
     char totalhigh[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
 
     ATLAS_LOGGER_INFO("Get payload for sysinfo totalhigh telemetry feature");
+
+    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
+        ATLAS_LOGGER_ERROR("Sysinfo totalhigh telemetry feature does not support thresholds");
+	return;
+    }
 
     if (sysinfo(&info) != 0) {
         ATLAS_LOGGER_ERROR("Error in getting sysinfo totalhigh");
@@ -312,7 +361,8 @@ atlas_telemetry_payload_totalhigh(uint8_t **payload, uint16_t *payload_len)
 }
 
 static void
-atlas_telemetry_payload_freehigh(uint8_t **payload, uint16_t *payload_len)
+atlas_telemetry_payload_freehigh(uint8_t **payload, uint16_t *payload_len,
+                                 uint8_t use_threshold)
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -322,6 +372,11 @@ atlas_telemetry_payload_freehigh(uint8_t **payload, uint16_t *payload_len)
     char freehigh[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
 
     ATLAS_LOGGER_INFO("Get payload for sysinfo freehigh telemetry feature");
+
+    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
+        ATLAS_LOGGER_ERROR("Sysinfo freehigh telemetry feature does not support thresholds");
+	return;
+    }
 
     if (sysinfo(&info) != 0) {
         ATLAS_LOGGER_ERROR("Error in getting sysinfo freehigh");
@@ -345,7 +400,8 @@ atlas_telemetry_payload_freehigh(uint8_t **payload, uint16_t *payload_len)
 }
 
 static void
-atlas_telemetry_payload_load1(uint8_t **payload, uint16_t *payload_len)
+atlas_telemetry_payload_load1(uint8_t **payload, uint16_t *payload_len,
+                              uint8_t use_threshold)
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -355,6 +411,11 @@ atlas_telemetry_payload_load1(uint8_t **payload, uint16_t *payload_len)
     char load1[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
 
     ATLAS_LOGGER_INFO("Get payload for sysinfo load1 telemetry feature");
+
+    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
+        ATLAS_LOGGER_ERROR("Sysinfo load1 telemetry feature does not support thresholds");
+	return;
+    }
 
     if (sysinfo(&info) != 0) {
         ATLAS_LOGGER_ERROR("Error in getting sysinfo load1");
@@ -378,7 +439,8 @@ atlas_telemetry_payload_load1(uint8_t **payload, uint16_t *payload_len)
 }
 
 static void
-atlas_telemetry_payload_load5(uint8_t **payload, uint16_t *payload_len)
+atlas_telemetry_payload_load5(uint8_t **payload, uint16_t *payload_len,
+                              uint8_t use_threshold)
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -388,6 +450,11 @@ atlas_telemetry_payload_load5(uint8_t **payload, uint16_t *payload_len)
     char load5[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
 
     ATLAS_LOGGER_INFO("Get payload for sysinfo load5 telemetry feature");
+
+    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
+        ATLAS_LOGGER_ERROR("Sysinfo load5 telemetry feature does not support thresholds");
+	return;
+    }
 
     if (sysinfo(&info) != 0) {
         ATLAS_LOGGER_ERROR("Error in getting sysinfo load5");
@@ -411,7 +478,8 @@ atlas_telemetry_payload_load5(uint8_t **payload, uint16_t *payload_len)
 }
 
 static void
-atlas_telemetry_payload_load15(uint8_t **payload, uint16_t *payload_len)
+atlas_telemetry_payload_load15(uint8_t **payload, uint16_t *payload_len,
+                               uint8_t use_threshold)
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -421,6 +489,11 @@ atlas_telemetry_payload_load15(uint8_t **payload, uint16_t *payload_len)
     char load15[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
 
     ATLAS_LOGGER_INFO("Get payload for sysinfo load15 telemetry feature");
+
+    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
+        ATLAS_LOGGER_ERROR("Sysinfo load15 telemetry feature does not support thresholds");
+	return;
+    }
 
     if (sysinfo(&info) != 0) {
         ATLAS_LOGGER_ERROR("Error in getting sysinfo load15");
@@ -444,30 +517,44 @@ atlas_telemetry_payload_load15(uint8_t **payload, uint16_t *payload_len)
 }
 
 atlas_coap_response_t
-atlas_telemetry_alert_cb(const char *uri_path, const uint8_t *req_payload, size_t req_payload_len,
-                         uint8_t **resp_payload, size_t *resp_payload_len)
+atlas_push_alert_procs_cb(const char *uri_path, const uint8_t *req_payload, size_t req_payload_len,
+                          uint8_t **resp_payload, size_t *resp_payload_len)
 {
     atlas_status_t status;
-    uint16_t ext_push;
-    uint16_t *int_scan = NULL;
-    char *threshold = NULL;
+    uint16_t push_rate;
 
-    ATLAS_LOGGER_DEBUG("Telemetry sysinfo alert end-point called");
+    ATLAS_LOGGER_DEBUG("Telemetry sysinfo push alert end-point called");
 
-    status = atlas_alert_cmd_parse(req_payload, req_payload_len,
-                                   &ext_push, &int_scan, &threshold);
-
+    status = atlas_alert_push_cmd_parse(req_payload, req_payload_len, &push_rate);
     if (status != ATLAS_OK) {
-        ATLAS_LOGGER_DEBUG("Telemetry sysinfo alert end-point encountered an error when parsing the command");
+        ATLAS_LOGGER_DEBUG("Telemetry sysinfo push alert end-point encountered an error when parsing the command");
         return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
     }
 
-    atlas_telemetry_ext_push_set("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/procs", ext_push);
-    
-    if (int_scan)
-        atlas_telemetry_int_scan_set("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/procs", *int_scan);
+    atlas_telemetry_ext_push_set("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/procs", push_rate);
+ 
+    return ATLAS_COAP_RESP_OK;
+}
 
-    free(int_scan);
+atlas_coap_response_t
+atlas_threshold_alert_procs_cb(const char *uri_path, const uint8_t *req_payload, size_t req_payload_len,
+                               uint8_t **resp_payload, size_t *resp_payload_len)
+{
+    atlas_status_t status;
+    uint16_t scan_rate;
+    char *threshold = NULL;
+
+    ATLAS_LOGGER_DEBUG("Telemetry sysinfo threshold alert end-point called");
+
+    status = atlas_alert_threshold_cmd_parse(req_payload, req_payload_len, &scan_rate,
+                                             &threshold);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_DEBUG("Telemetry sysinfo threshold alert end-point encountered an error when parsing the command");
+        return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
+    }
+
+    atlas_telemetry_int_scan_set("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/procs", scan_rate);
+
     free(threshold);
  
     return ATLAS_COAP_RESP_OK;
@@ -496,9 +583,15 @@ atlas_telemetry_add_sysinfo()
     atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/load15", atlas_telemetry_payload_load15);
 
     /* Add sysinfo telemetry alerts */
-    status = atlas_coap_server_add_resource("client/telemetry/alerts/sysinfo/procs", ATLAS_COAP_METHOD_PUT, atlas_telemetry_alert_cb);
+    status = atlas_coap_server_add_resource("client/telemetry/sysinfo/procs/alerts/push", ATLAS_COAP_METHOD_PUT, atlas_push_alert_procs_cb);
     if (status != ATLAS_OK) {
-        ATLAS_LOGGER_ERROR("Cannot install sysinfo procs telemetry alert end-point");
+        ATLAS_LOGGER_ERROR("Cannot install sysinfo procs push telemetry alert end-point");
+        return;
+    }
+    
+    status = atlas_coap_server_add_resource("client/telemetry/sysinfo/procs/alerts/threshold", ATLAS_COAP_METHOD_PUT, atlas_threshold_alert_procs_cb);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Cannot install sysinfo procs threshold telemetry alert end-point");
         return;
     }
 }

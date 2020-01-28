@@ -13,7 +13,8 @@
 #define ATLAS_KERNEL_INFO_MAX_LEN (128)
 
 static void
-atlas_telemetry_payload_kern_info(uint8_t **payload, uint16_t *payload_len)
+atlas_telemetry_payload_kern_info(uint8_t **payload, uint16_t *payload_len,
+                                  uint8_t use_threshold)
 {   
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -24,6 +25,11 @@ atlas_telemetry_payload_kern_info(uint8_t **payload, uint16_t *payload_len)
     
     ATLAS_LOGGER_INFO("Get payload for kernel info telemetry feature");
     
+    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
+        ATLAS_LOGGER_ERROR("Kernel info telemetry feature does not support thresholds");    
+        return;
+    }
+
     if (uname(&buffer) != 0) {
         ATLAS_LOGGER_ERROR("Error in getting kernel information");
         return;
