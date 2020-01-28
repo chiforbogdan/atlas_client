@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <netdb.h> 
 #include <stdlib.h>
@@ -13,58 +14,103 @@
 #include <pthread.h>
 
 #include "../logger/atlas_logger.h"
+#include "MQTTClient.h"
 
 #define SLEEPTIME 5
 #define IP "host 192.168.1.103"
-#define HOSTNAME "raspberrypi"
-#define PORTNO 51718
+#define ADDRESS "tcp://127.0.0.1:1883"
+#define CLIENTID "clientID"
+#define TOPICMAX "MAX"
+#define TOPIC "TOPIC"
+#define PAYLOAD "ALERT"
+#define THRESHOLD_PACKETS_PER_SECOND 5
+#define THRESHOLD_NO_OF_PACKETS 25
+#define QOS 1
+#define TIMEOUT 1000L
 
-int  sockfd;
-struct sockaddr_in serv_addr;
+int  fd;
+struct sockaddr_un addr;
+char *socket_path = "\0hidden";
+volatile MQTTClient_deliveryToken deliveredtoken;
+volatile MQTTClient clientMQTT;
 
+struct registration{
+    char* username;
+    char* clientid;
+    char* policy;
+};
 
-void atlas_init(char* username, int client_id, char* policy){
-
+void *register_to_atlas_client(void *client){
+    
     ATLAS_LOGGER_DEBUG("DP: Register to atlas_client");
-
+    
+    struct registration *client_r =(struct registration*) client;
+    int rc;
+    
     char buffer[256];
-    sprintf(buffer, "%s|%d|%s", username, client_id, policy);
-
-    int n;
-    struct hostent *server;
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
-        ATLAS_LOGGER_ERROR("DP: ERROR opening socket");
-    server = gethostbyname(HOSTNAME);
-    if (server == NULL) {
-        fprintf(stderr,"ERROR, no such host\n");
-        exit(0);
+    sprintf(buffer, "%s|%s|%s", client_r->username, 
+		client_r->clientid, client_r->policy);
+    if ( (fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+	ATLAS_LOGGER_ERROR("DP: Socket error");
     }
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, 
-         (char *)&serv_addr.sin_addr.s_addr,
-         server->h_length);
-    serv_addr.sin_port = htons(PORTNO);
+    
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    if (*socket_path == '\0') {
+	*addr.sun_path = '\0';
+	strncpy(addr.sun_path+1, socket_path+1, sizeof(addr.sun_path)-2);
+    } 
+    else {
+	strncpy(addr.sun_path, socket_path, sizeof(addr.sun_path)-1);
+    }
+    rc = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
+    while(rc == -1){
+	sleep(1);
+	ATLAS_LOGGER_ERROR("DP: Connect error");
+	rc = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
+    }   
     write_to_socket(buffer);
+    sleep(1);
+    
+    while(1){
+	send_values_to_atlas_client();
+	sleep(SLEEPTIME);
+    }
+
+
 }
 
+void atlas_init(pthread_t init_t, char* user, int client_id, char* pol){
+    
+    
+    struct registration client;
+    client.username = strdup(user);
+    client.clientid = strdup(client_id);
+    client.policy = strdup(pol); 
+    
+    pthread_create(&init_t, NULL, &register_to_atlas_client, (void*)&client);
+    
+    
+}
+
+
 void write_to_socket(char*buffer){
-
-   sockfd = socket(AF_INET, SOCK_STREAM, 0);
-   if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) 
-        ATLAS_LOGGER_ERROR("DP: ERROR connecting to atlas_client.");
-
-    int n = write(sockfd,buffer,strlen(buffer));
-    if (n < 0) 
-         ATLAS_LOGGER_ERROR("DP: ERROR writing to socket");
-    bzero(buffer,256);
-    n = read(sockfd,buffer,255);
-    if (n < 0) 
-         ATLAS_LOGGER_ERROR("DP: ERROR reading from socket");
-    else
-         printf("%s\n", buffer);
+    int n = -1;
+    while(n<0){
+	n = write(fd, buffer, strlen(buffer));   
+	if (n < 0){
+	     ATLAS_LOGGER_ERROR("DP: ERROR writing to socket.");  
+	     close(fd);
+	     sleep(2);
+	     ATLAS_LOGGER_DEBUG("DP: Socket reconnecting...");
+	     fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	     if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
+		ATLAS_LOGGER_ERROR("DP: Connect error");
+	     }
+	     n = write(fd, buffer, strlen(buffer));   
+	 }
+     }
 }
 
 void write_to_file(char *file, char *type, int RX){
@@ -72,95 +118,15 @@ void write_to_file(char *file, char *type, int RX){
 	fprintf(f, "%d\n", RX);
 	fclose(f);
 }	
-void packets_number_per_second(){
-	int R1, R2, T1, T2, RX, TX;
-	while(1){
-	    FILE * rx_file = fopen("/sys/class/net/wlan0/statistics/rx_packets", "r");
-	    FILE * tx_file = fopen("/sys/class/net/wlan0/statistics/tx_packets", "r");
-	    if(rx_file == 0 || tx_file == 0){
-		ATLAS_LOGGER_ERROR("DP: Failed to open file to read statistics");
-		exit(1);
-	    }
-	    else{
-		fscanf(rx_file, "%d", &R1);
-		fscanf(tx_file, "%d", &T1);
-		fclose(rx_file);
-		fclose(tx_file);
-		sleep(1);
-		rx_file = fopen("/sys/class/net/wlan0/statistics/rx_packets", "r");
-		tx_file = fopen("/sys/class/net/wlan0/statistics/tx_packets", "r");
-		fscanf(rx_file, "%d", &R2);
-		fscanf(tx_file, "%d", &T2);
-		RX = R2-R1;
-		TX = T2-T1;
-		write_to_file("packets_per_seconds.txt", "w", RX); 
-		printf("RX: %d,  TX: %d\n", RX, TX);
-	    }
-	    if(RX > 5){
-		ATLAS_LOGGER_DEBUG("DP: The number of pachets per seconds was exceeded.\n");
-		//break;
-	    }
-	}
-}
 
-void parse_packets(u_char *args, const struct pcap_pkthdr* pkthdr, const u_char* 
-    packet) 
-{ 
-    static int count = 1;
-    write_to_file("packets_number.txt", "w", count);
-    write_to_file("packets_length.txt", "a", pkthdr->len);
-    count++;
-}
-
-void *packets(){
-    int i;
-    char *dev; 
-    char errbuf[PCAP_ERRBUF_SIZE];
-    pcap_t* descr; 
-    const u_char *packet; 
-    struct pcap_pkthdr hdr;
-    struct ether_header *eptr;    
-    struct bpf_program fp;        
-    bpf_u_int32 maskp;            
-    bpf_u_int32 netp;            
-
-    dev = pcap_lookupdev(errbuf); 
-     
-    if(dev == NULL) {
-        
-        ATLAS_LOGGER_ERROR(errbuf);
-        exit(1);
-    } 
-    pcap_lookupnet(dev, &netp, &maskp, errbuf); 
- 
-    descr = pcap_open_live(dev, BUFSIZ, 1,1000, errbuf); 
-    if(descr == NULL) {
-        ATLAS_LOGGER_ERROR(errbuf);
-        exit(1);
-    } 
-
-    if(pcap_compile(descr, &fp, IP, 0, netp) == -1) {
-        ATLAS_LOGGER_ERROR("DP: Error calling pcap_compile\n");
-        exit(1);
-    } 
- 
-    if(pcap_setfilter(descr, &fp) == -1) {
-        ATLAS_LOGGER_ERROR("DP: Error setting filter\n");
-        exit(1);
-    } 
-
-    pcap_loop(descr, -1, parse_packets, NULL); 
-}
-
-void *send_values_to_atlas_client(){
-	while (1){
-		sleep(SLEEPTIME);
+void send_values_to_atlas_client(){
+	ATLAS_LOGGER_DEBUG("DP: Send average packet length.");
 		FILE *f ;
-		if ((f = fopen("packets_length.txt", "r")) == NULL){
+		if ((f = fopen("MQTT_payload_length.txt", "r")) == NULL){
 			ATLAS_LOGGER_ERROR("DP: No packets received");
 		}
 		else{
-			int data;
+			int data=0;
 			int i = 0, pacLen;
 			while(!feof(f)){
 			    fscanf(f, "%d", &pacLen);
@@ -171,9 +137,86 @@ void *send_values_to_atlas_client(){
 			char buff[256];
 			sprintf(buff, "averageLength %d", data);
 			write_to_socket(buff);
+			sleep(0.1);
+			sprintf(buff, "pkt/min %d", i);
+			write_to_socket(buff);
 			fclose(f);
 		}		
-	}
+}
+
+void publish(MQTTClient client, MQTTClient_message pubmsg, 
+	    MQTTClient_deliveryToken token, int rc, char *topic){
+	pubmsg.payload = PAYLOAD;
+    	pubmsg.payloadlen = strlen(PAYLOAD);
+    	pubmsg.qos = QOS;
+    	pubmsg.retained = 0;
+	MQTTClient_publishMessage(client, topic, &pubmsg, &token);
+	rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
+	char buff[256];
+	sprintf(buff, "DP: Message %s with delivery token %d delivered.", PAYLOAD, token);
+    	ATLAS_LOGGER_DEBUG(buff);
+
+}
+
+void subscribe(MQTTClient client, char* topic){
+	MQTTClient_subscribe(client, topic, QOS);
+	char buff[256];
+	sprintf(buff, "Subscribing to topic %s for client %s using QOS %d\n", topic, CLIENTID, QOS);
+	ATLAS_LOGGER_DEBUG(buff);
+ 	
+}
+
+void connlost(void *context, char *cause){
+    char buff[256];
+    sprintf(buff, "Connection lost, cause: %s.", cause);
+    ATLAS_LOGGER_DEBUG(buff);
+}
+
+void delivered(void *context, MQTTClient_deliveryToken dt){
+    printf("Message with token value %d delivery confirmed\n", dt);
+    deliveredtoken = dt;
+}
+
+
+int msgarrvd(void *context, char *topicName, int topicLen, 
+	    MQTTClient_message *message){
+    int i;
+    char* payloadptr;
+
+    write_to_file("MQTT_payload_length.txt", "a", message->payloadlen);
+    MQTTClient_freeMessage(&message);
+    MQTTClient_free(topicName);
+    return 1;
+}
+
+MQTTClient start_MQTTclient(){
+    MQTTClient client;
+    MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
+    MQTTClient_message pubmsg = MQTTClient_message_initializer;
+    MQTTClient_deliveryToken token = 0;
+    int rc;
+
+    if(MQTTClient_create(&client, ADDRESS, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL) 
+		!= MQTTCLIENT_SUCCESS){
+        ATLAS_LOGGER_ERROR("Failed to create MQTTclient.");
+        //exit(-1);
+    }
+    
+    conn_opts.keepAliveInterval = 20;
+    conn_opts.cleansession = 1;
+
+    MQTTClient_setCallbacks(client, NULL, connlost, msgarrvd, delivered);
+
+    if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS)
+    {
+        ATLAS_LOGGER_ERROR("Failed to connectMQTTclient");
+        //exit(-1);
+    }
+      
+    MQTTClient_subscribe(client, TOPIC, QOS);
+    printf("Subscribing to topic %s for client %s using QOS %d\n", TOPIC, CLIENTID, QOS);
+       
+    return client;
 }
 
 

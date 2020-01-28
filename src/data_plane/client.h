@@ -1,19 +1,32 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-void error(char *msg);
 
-void atlas_init();
+#include "MQTTClient.h"
+
+void *register_to_atlas_client(void *client);
+
+void atlas_init(pthread_t init_t, char* user, int client_id, char* pol);
+
+void write_to_socket(char*buffer);
 
 void write_to_file(char *file, char *type, int RX);
 
-void packets_number_per_second();
+void send_values_to_atlas_client();
 
-void parse_packets(u_char *args, const struct pcap_pkthdr* pkthdr, const u_char* packet);
+void publish(MQTTClient client, MQTTClient_message pubmsg, 
+	    MQTTClient_deliveryToken token, int rc, char *topic);
+	    
+void subscribe(MQTTClient client, char* topic);
 
-void *packets();
+void connlost(void *context, char *cause);
 
-void *send_values_to_atlas_client();
+void delivered(void *context, MQTTClient_deliveryToken dt);
+
+int msgarrvd(void *context, char *topicName, int topicLen, 
+	    MQTTClient_message *message);
+	    
+MQTTClient start_MQTTclient();
 
 
 #endif
