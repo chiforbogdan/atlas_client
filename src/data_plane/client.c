@@ -99,7 +99,7 @@ void send_username_command(){
     uint16_t cmd_len = 0;
     
     cmd_batch = atlas_cmd_batch_new();
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_USERNAME, strlen(client.username), (uint8_t *)client.username);
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_USERNAME, strlen(client.username), (uint8_t *)client.username);
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
     write_to_socket(cmd_buf);
     
@@ -112,7 +112,7 @@ void send_clientid_command(){
     uint16_t cmd_len = 0;
     
     cmd_batch = atlas_cmd_batch_new();
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_CLIENTID, strlen(client.clientid), (uint8_t *)client.clientid);
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_CLIENTID, strlen(client.clientid), (uint8_t *)client.clientid);
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
     write_to_socket(cmd_buf);
     
@@ -125,7 +125,7 @@ void send_policy_command(){
     uint16_t cmd_len = 0;
     
     cmd_batch = atlas_cmd_batch_new();
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_POLICY, sizeof(client.policy), (uint8_t *)&client.policy);
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY, sizeof(client.policy), (uint8_t *)&client.policy);
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
     write_to_socket(cmd_buf);
     
@@ -138,7 +138,7 @@ void send_packets_per_minute_command(){
     uint16_t cmd_len = 0;
     
     cmd_batch = atlas_cmd_batch_new();
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_PACKETS_PER_MINUTE, sizeof(payload_samples), (uint8_t *)&payload_samples);
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE, sizeof(payload_samples), (uint8_t *)&payload_samples);
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
     write_to_socket(cmd_buf);
     
@@ -151,7 +151,7 @@ void send_packets_avg_command(){
     uint16_t cmd_len = 0;
     
     cmd_batch = atlas_cmd_batch_new();
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_PACKETS_AVG, sizeof(payload_avg), (uint8_t *)&payload_avg);
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_AVG, sizeof(payload_avg), (uint8_t *)&payload_avg);
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
     write_to_socket(cmd_buf);
     
