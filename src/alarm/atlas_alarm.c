@@ -49,7 +49,7 @@ atlas_alarm_trigger(int fd)
 }
 
 atlas_alarm_id_t
-atlas_alarm_set(uint16_t ms, atlas_alarm_cb_t alarm_cb, uint8_t run_once)
+atlas_alarm_set(uint32_t ms, atlas_alarm_cb_t alarm_cb, uint8_t run_once)
 {
     struct itimerspec time_spec;
     atlas_alarm_entry_t *alarm, *p;

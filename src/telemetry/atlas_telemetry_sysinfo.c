@@ -525,18 +525,18 @@ atlas_telemetry_payload_load15(uint8_t **payload, uint16_t *payload_len,
     atlas_cmd_batch_free(cmd_batch);
 }
 
-atlas_coap_response_t
+static atlas_coap_response_t
 atlas_push_alert_procs_cb(const char *uri_path, const uint8_t *req_payload, size_t req_payload_len,
                           uint8_t **resp_payload, size_t *resp_payload_len)
 {
     atlas_status_t status;
     uint16_t push_rate;
 
-    ATLAS_LOGGER_DEBUG("Telemetry sysinfo push alert end-point called");
+    ATLAS_LOGGER_DEBUG("Telemetry sysinfo procs push alert end-point called");
 
     status = atlas_alert_push_cmd_parse(req_payload, req_payload_len, &push_rate);
     if (status != ATLAS_OK) {
-        ATLAS_LOGGER_DEBUG("Telemetry sysinfo push alert end-point encountered an error when parsing the command");
+        ATLAS_LOGGER_DEBUG("Telemetry sysinfo procs push alert end-point encountered an error when parsing the command");
         return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
     }
 
@@ -545,7 +545,27 @@ atlas_push_alert_procs_cb(const char *uri_path, const uint8_t *req_payload, size
     return ATLAS_COAP_RESP_OK;
 }
 
-atlas_coap_response_t
+static atlas_coap_response_t
+atlas_push_alert_uptime_cb(const char *uri_path, const uint8_t *req_payload, size_t req_payload_len,
+                           uint8_t **resp_payload, size_t *resp_payload_len)
+{
+    atlas_status_t status;
+    uint16_t push_rate;
+
+    ATLAS_LOGGER_DEBUG("Telemetry sysinfo uptime push alert end-point called");
+
+    status = atlas_alert_push_cmd_parse(req_payload, req_payload_len, &push_rate);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_DEBUG("Telemetry sysinfo uptime push alert end-point encountered an error when parsing the command");
+        return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
+    }
+
+    atlas_telemetry_push_set("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/uptime", push_rate);
+ 
+    return ATLAS_COAP_RESP_OK;
+}
+
+static atlas_coap_response_t
 atlas_threshold_alert_procs_cb(const char *uri_path, const uint8_t *req_payload, size_t req_payload_len,
                                uint8_t **resp_payload, size_t *resp_payload_len)
 {
@@ -601,7 +621,7 @@ atlas_telemetry_add_sysinfo()
     atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/load5", atlas_telemetry_payload_load5);
     atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/load15", atlas_telemetry_payload_load15);
 
-    /* Add sysinfo telemetry alerts */
+    /* Add sysinfo telemetry push alerts */
     status = atlas_coap_server_add_resource("client/telemetry/sysinfo/procs/alerts/push", ATLAS_COAP_METHOD_PUT,
                                             atlas_push_alert_procs_cb);
     if (status != ATLAS_OK) {
@@ -609,6 +629,14 @@ atlas_telemetry_add_sysinfo()
         return;
     }
     
+    status = atlas_coap_server_add_resource("client/telemetry/sysinfo/uptime/alerts/push", ATLAS_COAP_METHOD_PUT,
+                                            atlas_push_alert_uptime_cb);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Cannot install sysinfo procs push telemetry alert end-point");
+        return;
+    }
+    
+    /* Add sysinfo telemetry threshold alerts */
     status = atlas_coap_server_add_resource("client/telemetry/sysinfo/procs/alerts/threshold", ATLAS_COAP_METHOD_PUT,
                                             atlas_threshold_alert_procs_cb);
     if (status != ATLAS_OK) {

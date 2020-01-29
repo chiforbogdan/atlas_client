@@ -19,7 +19,7 @@ typedef void (*atlas_alarm_cb_t)(atlas_alarm_id_t);
 * @param[in] run_once Indicates if the alarm should run only once
 * @return alarm id
 */
-atlas_alarm_id_t atlas_alarm_set(uint16_t ms, atlas_alarm_cb_t alarm_cb, uint8_t run_once);
+atlas_alarm_id_t atlas_alarm_set(uint32_t ms, atlas_alarm_cb_t alarm_cb, uint8_t run_once);
 
 /**
  * @brief Cancel alarm
