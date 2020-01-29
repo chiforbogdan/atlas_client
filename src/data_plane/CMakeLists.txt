@@ -18,7 +18,7 @@ set_property(TARGET pahomqtt3a PROPERTY IMPORTED_LOCATION ${paho-mqtt3a})
 include_directories(/home/pi/atlas_data_plane/paho.mqtt.c/src)
 
 # Atlas client files
-file(GLOB SOURCES  "*.c" "/home/pi/atlas_client/src/logger/*.c" "/home/pi/atlas_client/src/commands/*.c" )
+file(GLOB SOURCES  "*.c" "../logger/*.c" "../commands/*.c" )
 
 #set(CMAKE_C_FLAGS "$(CMAKE_C_FLAGS)" -Wall -w -lpthread -lpaho-mqtt3c)
 
