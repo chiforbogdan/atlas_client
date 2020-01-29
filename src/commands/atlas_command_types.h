@@ -56,6 +56,21 @@ typedef enum _atlas_cmd_type
 
    /* Telemetry sysinfo load 15 command: payload is 15 minutes load average */
     ATLAS_CMD_TELEMETRY_SYSINFO_LOAD15,
+    
+    /* Username command: payload is the client username */
+    ATLAS_CMD_USERNAME,
+    
+    /* ClientID command: payload is the client id */
+    ATLAS_CMD_CLIENTID,
+    
+    /* Policy command: payload is the policy value */
+    ATLAS_CMD_POLICY,
+    
+    /* Packets per minute command: payload is the number of received packets per minute */
+    ATLAS_CMD_PACKETS_PER_MINUTE,
+    
+    /* Packets average command: payload is the average length of received packets*/
+    ATLAS_CMD_PACKETS_AVG
 
 } atlas_cmd_type_t;
 
