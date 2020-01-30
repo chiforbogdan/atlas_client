@@ -56,6 +56,23 @@ typedef enum _atlas_cmd_type
 
    /* Telemetry sysinfo load 15 command: payload is 15 minutes load average */
     ATLAS_CMD_TELEMETRY_SYSINFO_LOAD15,
+    
+    /* Command types shared with the data plane agent */
+
+    /* Username command: payload is the client username */
+    ATLAS_CMD_DATA_PLANE_USERNAME = 1000,
+    
+    /* ClientID command: payload is the client id */
+    ATLAS_CMD_DATA_PLANE_CLIENTID,
+    
+    /* Policy command: payload is the policy value */
+    ATLAS_CMD_DATA_PLANE_POLICY,
+    
+    /* Packets per minute command: payload is the number of received packets per minute */
+    ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE,
+    
+    /* Packets average command: payload is the average length of received packets*/
+    ATLAS_CMD_DATA_PLANE_PACKETS_AVG
 
     /* Telemetry alert external push rate: payload is a number of seconds indicating
     an interval at which data will be pushed to gateway */
