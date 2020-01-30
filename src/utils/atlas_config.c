@@ -21,6 +21,9 @@ static char *gw_port;
 /* Client local interface */
 static char *local_iface;
 
+/* Local port */
+uint16_t local_port;
+
 atlas_status_t
 atlas_cfg_set_hostname(const char *hostname)
 {
@@ -105,3 +108,25 @@ atlas_cfg_get_local_ip(char *ip)
 
     return ATLAS_OK;
 }
+
+atlas_status_t atlas_cfg_set_local_port(const char *port)
+{
+    int port_val;
+
+    if (!port)
+        return ATLAS_INVALID_INPUT;
+
+    port_val = atoi(port);
+    if (port_val <= 0 || port_val > ATLAS_MAX_PORT_VAL)
+        return ATLAS_INVALID_INPUT;
+
+    local_port = port_val;
+
+    return ATLAS_OK;
+}
+
+uint16_t atlas_cfg_get_local_port()
+{
+    return local_port;
+}
+

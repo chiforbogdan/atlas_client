@@ -65,15 +65,13 @@ set_dtls_psk(coap_context_t *ctx, const char *psk_val)
 }
 
 static coap_context_t*
-get_context(const char *hostname, const char *port,
-            atlas_coap_server_mode_t server_mode, const char *psk)
+get_context(uint16_t port, atlas_coap_server_mode_t server_mode, const char *psk)
 {
-    struct addrinfo hints;
-    struct addrinfo *res, *r;
     coap_context_t *ctx = NULL;
-    coap_address_t addr, addrs;
+    coap_address_t listen_addr, listen_addrs;
     uint16_t tmp;
-    coap_endpoint_t *ep, *eps;
+    coap_endpoint_t *ep = NULL;
+    coap_endpoint_t *eps = NULL;
 
     ctx = coap_new_context(NULL);
     if (!ctx)
@@ -82,64 +80,46 @@ get_context(const char *hostname, const char *port,
     /* Set DTLS PSK */
     if (ATLAS_COAP_SERVER_IS_DTLS(server_mode))
         set_dtls_psk(ctx, psk);
-
-    memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_UNSPEC;
-    /* Use UDP */
-    hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST;
-
-    if (getaddrinfo(hostname, port, &hints, &res) != 0) {
-        ATLAS_LOGGER_ERROR("Cannot start CoAP server");
-        coap_free_context(ctx);
-        return NULL;
-    }
-
-    for (r = res; r; r = r->ai_next) {
-        if (r->ai_addrlen > sizeof(addr.addr))
-            continue;
         
-        coap_address_init(&addr);
-        addr.size = r->ai_addrlen;
-        memcpy(&addr.addr, r->ai_addr, addr.size);
-        addrs = addr;
+    coap_address_init(&listen_addr);
+    listen_addr.addr.sa.sa_family = AF_INET;
+    listen_addr.addr.sin.sin_port = htons (port);
+    listen_addrs = listen_addr;
 
-        if (ATLAS_COAP_SERVER_IS_UDP(server_mode) && ATLAS_COAP_SERVER_IS_DTLS(server_mode)) {
-            if (addr.addr.sa.sa_family == AF_INET) {
-                tmp = ntohs(addr.addr.sin.sin_port) + 1;
-                addrs.addr.sin.sin_port = htons(tmp);
-            } else if (addr.addr.sa.sa_family == AF_INET6) {
-                uint16_t temp = ntohs(addr.addr.sin6.sin6_port) + 1;
-                addrs.addr.sin6.sin6_port = htons(temp);
-            }
+    if (ATLAS_COAP_SERVER_IS_UDP(server_mode) && ATLAS_COAP_SERVER_IS_DTLS(server_mode)) {
+        if (listen_addr.addr.sa.sa_family == AF_INET) {
+            tmp = ntohs(listen_addr.addr.sin.sin_port) + 1;
+            listen_addrs.addr.sin.sin_port = htons(tmp);
+        } else if (listen_addr.addr.sa.sa_family == AF_INET6) {
+            uint16_t temp = ntohs(listen_addr.addr.sin6.sin6_port) + 1;
+            listen_addrs.addr.sin6.sin6_port = htons(temp);
         }
-
-        if (ATLAS_COAP_SERVER_IS_UDP(server_mode)) {
-            ep = coap_new_endpoint(ctx, &addr, COAP_PROTO_UDP);
-            if (!ep) {
-                ATLAS_LOGGER_ERROR("Cannot open COAP UDP");
-                continue;
-            }
-        }
-
-        if (ATLAS_COAP_SERVER_IS_DTLS(server_mode)) {
-            eps = coap_new_endpoint(ctx, &addrs, COAP_PROTO_DTLS);
-            if (!eps)
-                ATLAS_LOGGER_ERROR("Cannot open COAP DTLS");
-        }
-
-        break;
     }
 
-    if (!r) {
-        ATLAS_LOGGER_ERROR("Cannot start CoAP server");
-        coap_free_context(ctx);
-        return NULL;
+    if (ATLAS_COAP_SERVER_IS_UDP(server_mode)) {
+        ep = coap_new_endpoint(ctx, &listen_addr, COAP_PROTO_UDP);
+        if (!ep) {
+            ATLAS_LOGGER_ERROR("Cannot open COAP UDP");
+            goto ERROR;
+        }
     }
 
-    freeaddrinfo(res);
+    if (ATLAS_COAP_SERVER_IS_DTLS(server_mode)) {
+        eps = coap_new_endpoint(ctx, &listen_addrs, COAP_PROTO_DTLS);
+        if (!eps) {
+            ATLAS_LOGGER_ERROR("Cannot open COAP DTLS");
+            goto ERROR;
+        }
+    }
 
     return ctx;
+
+ERROR:
+    coap_free_endpoint(ep);
+    coap_free_endpoint(eps);
+    coap_free_context(ctx);
+
+    return NULL;
 }
 
 static void
@@ -327,17 +307,14 @@ delete_handler(coap_context_t *ctx,
 
 
 atlas_status_t
-atlas_coap_server_start(const char *hostname, const char *port,
-                        atlas_coap_server_mode_t server_mode, const char *psk)
+atlas_coap_server_start(uint16_t port, atlas_coap_server_mode_t server_mode, const char *psk)
 {
-    if (!hostname)
-        return ATLAS_INVALID_HOSTNAME;
     if (!port)
         return ATLAS_INVALID_PORT;
 
     coap_startup();
     
-    ctx = get_context(hostname, port, server_mode, psk);
+    ctx = get_context(port, server_mode, psk);
     if (!ctx) {
         ATLAS_LOGGER_ERROR("Cannot create CoAP context");
         return ATLAS_GENERAL_ERR;

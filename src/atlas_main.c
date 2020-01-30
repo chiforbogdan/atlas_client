@@ -15,7 +15,7 @@
 static void
 print_usage()
 {
-    printf("Usage: atlas_client -h hostname -p port -i interface\n");
+    printf("Usage: atlas_client -h <hostname> -p <port> -i <interface> -l <port>\n");
 }
 
 static void
@@ -23,11 +23,12 @@ parse_options(int argc, char **argv)
 {
     int opt;
     uint8_t hostname_opt = 0;
-    uint8_t port_opt = 0;
+    uint8_t gw_port_opt = 0;
     uint8_t iface_opt = 0;
+    uint8_t local_port_opt = 0;
   
-    while((opt = getopt(argc, argv, ":h:p:i:")) != -1) {  
-        switch(opt)  { 
+    while((opt = getopt(argc, argv, ":h:p:i:l:")) != -1) {  
+        switch(opt)  {
             case 'h':
                 if (atlas_cfg_set_hostname(optarg) != ATLAS_OK) {
                     print_usage();
@@ -41,7 +42,7 @@ parse_options(int argc, char **argv)
                     print_usage();
                     exit(1);
                 }
-                port_opt = 1;
+                gw_port_opt = 1;
                 
                 break;  
             case 'i':  
@@ -52,6 +53,15 @@ parse_options(int argc, char **argv)
                 iface_opt = 1;
 
                 break;  
+            case 'l':  
+                if (atlas_cfg_set_local_port(optarg) != ATLAS_OK) {
+                    print_usage();
+                    exit(1);
+                }
+                local_port_opt = 1;
+
+                break;  
+ 
             default:  
                 printf("unknown option: %c\n", optopt);
                 print_usage();
@@ -59,7 +69,7 @@ parse_options(int argc, char **argv)
         }  
     }
     
-    if (!hostname_opt || !port_opt || !iface_opt) {
+    if (!hostname_opt || !gw_port_opt || !iface_opt || !local_port_opt) {
         print_usage();
         exit(1);
     }
@@ -68,6 +78,8 @@ parse_options(int argc, char **argv)
 int
 main(int argc, char **argv)
 {
+    uint16_t local_port;
+
     parse_options(argc, argv);
     
     atlas_log_init();
@@ -90,7 +102,8 @@ main(int argc, char **argv)
     atlas_register_start();
 
     /* Start server */
-    if (atlas_coap_server_start("127.0.0.1", "10001", ATLAS_COAP_SERVER_MODE_BOTH, atlas_psk_get()) != ATLAS_OK) {
+    local_port = atlas_cfg_get_local_port();
+    if (atlas_coap_server_start(local_port, ATLAS_COAP_SERVER_MODE_BOTH, atlas_psk_get()) != ATLAS_OK) {
         ATLAS_LOGGER_INFO("Cannot start CoAP server");
         return -1;
     }

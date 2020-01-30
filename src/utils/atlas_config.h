@@ -3,6 +3,8 @@
 
 #include "atlas_status.h"
 
+#define ATLAS_IP_MAX_LEN (16)
+
 /**
 * @brief Set gateway hostname
 * @param[in] hostname Gateway hostname
@@ -24,8 +26,8 @@ const char* atlas_cfg_get_hostname();
 atlas_status_t atlas_cfg_set_port(const char *port);
 
 /**
-* @brief Get gateway hostname
-* @return Gateway hostname
+* @brief Get gateway port
+* @return Gateway port
 */
 const char* atlas_cfg_get_port();
 
@@ -48,5 +50,18 @@ const char* atlas_cfg_get_local_iface();
  * @return none
  */
 atlas_status_t atlas_cfg_get_local_ip(char *ip);
+
+/**
+* @brief Set local port
+* @param[in] port Local port
+* @return none
+*/
+atlas_status_t atlas_cfg_set_local_port(const char *port);
+
+/**
+* @brief Get local port
+* @return Local port
+*/
+uint16_t atlas_cfg_get_local_port();
 
 #endif /* __ATLAS_CONFIG_H__ */

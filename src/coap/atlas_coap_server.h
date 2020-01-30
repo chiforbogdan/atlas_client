@@ -25,13 +25,12 @@ typedef atlas_coap_response_t (*atlas_coap_server_cb_t)(const char *uri_path, co
 
 /**
 * @brief Start CoAP server
-* @param[in] hostname Server hostname
 * @param[in] port Server port
 * @param[in] server_mode Server mode (UDP, DTLS PSK, both)
 * @param[in] psk Pre-shared key (for DTLS)
 * @return status
 */
-atlas_status_t atlas_coap_server_start(const char *hostname, const char *port, atlas_coap_server_mode_t server_mode, const char *psk);
+atlas_status_t atlas_coap_server_start(uint16_t port, atlas_coap_server_mode_t server_mode, const char *psk);
 
 /**
  * @brief Add CoAP resource
