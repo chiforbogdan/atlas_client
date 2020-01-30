@@ -69,10 +69,6 @@ int
 main(int argc, char **argv)
 {
     parse_options(argc, argv);
-
-    printf("h %s\n", atlas_cfg_get_hostname());
-    printf("p %s\n", atlas_cfg_get_port());
-    printf("i %s\n", atlas_cfg_get_local_iface());
     
     atlas_log_init();
 

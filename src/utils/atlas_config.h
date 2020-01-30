@@ -42,4 +42,11 @@ atlas_status_t atlas_cfg_set_local_iface(const char *iface);
 */
 const char* atlas_cfg_get_local_iface();
 
+/**
+ * @brief Get IP address for the configured local interface
+ * @param[out] ip IP address
+ * @return none
+ */
+atlas_status_t atlas_cfg_get_local_ip(char *ip);
+
 #endif /* __ATLAS_CONFIG_H__ */
