@@ -8,12 +8,16 @@
 #include "../coap/atlas_coap_response.h"
 #include "../alarm/atlas_alarm.h"
 #include "../telemetry/atlas_telemetry.h"
+#include "../utils/atlas_config.h"
 
-#define ATLAS_CLIENT_REGISTER_TIMEOUT_MS (5000)
+#define ATLAS_CLIENT_REGISTER_TIMEOUT_MS  (5000)
 #define ATLAS_CLIENT_KEEPALIVE_TIMEOUT_MS (20000)
-#define ATLAS_CLIENT_REGISTERED          (1)
-#define ATLAS_CLIENT_NOT_REGISTERED      (0)
-#define ATLAS_CLIENT_KEEPALIVE_COUNT     (3)
+#define ATLAS_CLIENT_REGISTERED           (1)
+#define ATLAS_CLIENT_NOT_REGISTERED       (0)
+#define ATLAS_CLIENT_KEEPALIVE_COUNT      (3)
+
+#define ATLAS_CLIENT_REGISTER_COAP_PATH   "gateway/register"
+#define ATLAS_CLIENT_KEEPALIVE_COAP_PATH  "gateway/keepalive"
 
 /* Indicates if the client is registered or not */
 static uint8_t registered;
@@ -143,6 +147,7 @@ send_keepalive_command()
     uint8_t *cmd_buf = NULL;
     uint16_t cmd_len = 0;
     const char *identity = atlas_identity_get();
+    char uri[ATLAS_URI_MAX_LEN] = { 0 };
     
     cmd_batch = atlas_cmd_batch_new();
 
@@ -155,7 +160,8 @@ send_keepalive_command()
 
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
 
-    status = atlas_coap_client_request("coaps://127.0.0.1:10100/gateway/keepalive", ATLAS_COAP_METHOD_PUT,
+    atlas_cfg_coap_get_uri(ATLAS_CLIENT_KEEPALIVE_COAP_PATH, uri);
+    status = atlas_coap_client_request(uri, ATLAS_COAP_METHOD_PUT,
                                        cmd_buf, cmd_len, ATLAS_CLIENT_REGISTER_TIMEOUT_MS,
                                        keepalive_callback);
     if (status != ATLAS_OK)
@@ -172,6 +178,7 @@ send_register_command()
     uint8_t *cmd_buf = NULL;
     uint16_t cmd_len = 0;
     const char *identity = atlas_identity_get();
+    char uri[ATLAS_URI_MAX_LEN] = { 0 };
     
     cmd_batch = atlas_cmd_batch_new();
 
@@ -179,7 +186,8 @@ send_register_command()
 
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
 
-    status = atlas_coap_client_request("coaps://127.0.0.1:10100/gateway/register", ATLAS_COAP_METHOD_POST,
+    atlas_cfg_coap_get_uri(ATLAS_CLIENT_REGISTER_COAP_PATH, uri);
+    status = atlas_coap_client_request(uri, ATLAS_COAP_METHOD_POST,
                                        cmd_buf, cmd_len, ATLAS_CLIENT_REGISTER_TIMEOUT_MS,
                                        reg_callback);
     if (status != ATLAS_OK)

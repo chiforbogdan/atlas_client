@@ -11,6 +11,7 @@
 #include "atlas_config.h"
 
 #define ATLAS_MAX_PORT_VAL (65535)
+#define ATLAS_COAPS_SCHEMA "coaps://"
 
 /* Gateway hostname */
 static char *gw_hostname;
@@ -128,5 +129,18 @@ atlas_status_t atlas_cfg_set_local_port(const char *port)
 uint16_t atlas_cfg_get_local_port()
 {
     return local_port;
+}
+
+void atlas_cfg_coap_get_uri(const char *path, char *uri)
+{
+    if (!path || !uri)
+        return;
+
+    strcpy(uri, ATLAS_COAPS_SCHEMA);
+    strcat(uri, gw_hostname);
+    strcat(uri, ":");
+    strcat(uri, gw_port);
+    strcat(uri, "/");
+    strcat(uri, path); 
 }
 

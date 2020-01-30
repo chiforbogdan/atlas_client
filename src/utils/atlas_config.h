@@ -4,6 +4,7 @@
 #include "atlas_status.h"
 
 #define ATLAS_IP_MAX_LEN (16)
+#define ATLAS_URI_MAX_LEN (64)
 
 /**
 * @brief Set gateway hostname
@@ -63,5 +64,13 @@ atlas_status_t atlas_cfg_set_local_port(const char *port);
 * @return Local port
 */
 uint16_t atlas_cfg_get_local_port();
+
+/**
+* @brief Get gateway URI from given path (prepend schema://<gateway_hostname>:<gateway_port>/
+* @param[in] path CoAP path
+* @param[out] uri CoAP URI
+* return none
+*/
+void atlas_cfg_coap_get_uri(const char *path, char *uri);
 
 #endif /* __ATLAS_CONFIG_H__ */
