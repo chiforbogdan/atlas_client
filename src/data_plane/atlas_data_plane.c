@@ -93,12 +93,9 @@ int main(int argc, char *argv[])
     atlas_init( "username", "clientid", 10);
     
     //CLIENT MQTT
-    MQTTClient atlasMQTTClient;
-    atlasMQTTClient = start_MQTTclient();
+    start_MQTTclient();
     
-    while(1){
-        
-    }
+    while(1);
     
     return 0;
 }
