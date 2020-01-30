@@ -56,7 +56,21 @@ typedef enum _atlas_cmd_type
 
    /* Telemetry sysinfo load 15 command: payload is 15 minutes load average */
     ATLAS_CMD_TELEMETRY_SYSINFO_LOAD15,
-    
+
+    /* Telemetry alert external push rate: payload is a number of seconds indicating
+    an interval at which data will be pushed to gateway */
+    ATLAS_CMD_TELEMETRY_ALERT_EXT_PUSH_RATE,
+
+    /* Telemetry alert internal scan rate: payload is a number of seconds indicating
+    an interval at which data will be scanned internally by the client and pushed to
+    gateway only if passes the a given threshold */ 
+    ATLAS_CMD_TELEMETRY_ALERT_INT_SCAN_RATE,
+
+    /* Telemetry alert threshold value: payload is a string indicating the threshold
+    value. This string will be parsed by each telemetry feature (application specific) */
+    ATLAS_CMD_TELEMETRY_ALERT_THRESHOLD,
+
+
     /* Command types shared with the data plane agent */
 
     /* Username command: payload is the client username */
@@ -72,20 +86,7 @@ typedef enum _atlas_cmd_type
     ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE,
     
     /* Packets average command: payload is the average length of received packets*/
-    ATLAS_CMD_DATA_PLANE_PACKETS_AVG
-
-    /* Telemetry alert external push rate: payload is a number of seconds indicating
-    an interval at which data will be pushed to gateway */
-    ATLAS_CMD_TELEMETRY_ALERT_EXT_PUSH_RATE,
-
-    /* Telemetry alert internal scan rate: payload is a number of seconds indicating
-    an interval at which data will be scanned internally by the client and pushed to
-    gateway only if passes the a given threshold */ 
-    ATLAS_CMD_TELEMETRY_ALERT_INT_SCAN_RATE,
-
-    /* Telemetry alert threshold value: payload is a string indicating the threshold
-    value. This string will be parsed by each telemetry feature (application specific) */
-    ATLAS_CMD_TELEMETRY_ALERT_THRESHOLD,
+    ATLAS_CMD_DATA_PLANE_PACKETS_AVG,
 
 } atlas_cmd_type_t;
 
