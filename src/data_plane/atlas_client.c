@@ -152,18 +152,15 @@ static void socket_connect(){
 }
 
 static void write_to_socket(uint8_t* cmd_buf, uint16_t cmd_len){
-    int n = -1;
+    int n = write(fd, (char*)&cmd_buf, cmd_len);   
+
     while(n<0){
-	n = write(fd, (char*)&cmd_buf, cmd_len);   
-	if (n < 0){
 	     ATLAS_LOGGER_ERROR("DP: ERROR writing to socket.");  
 	     close(fd);
 	     sleep(2);
-	     ATLAS_LOGGER_DEBUG("DP: Socket reconnecting...");
-	     fd = socket(AF_UNIX, SOCK_STREAM, 0);
-	     if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
-		ATLAS_LOGGER_ERROR("DP: Connect error");
-	     }
+	    
+	     socket_connect();
+	     
 	     n = write(fd, (char*)&cmd_buf, cmd_len);   
 	 }
      }
