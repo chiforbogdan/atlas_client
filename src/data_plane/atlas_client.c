@@ -33,18 +33,14 @@ static void send_clientid_command();
 static void send_policy_command();
 static void send_packets_per_minute_command();
 static void send_packets_avg_command();
-static void write_to_socket(uint8_t* buffer);
+static void write_to_socket(uint8_t* buffer,uint16_t cmd_len);
+static void socket_connect();
 static void restore_payload();
+static void increment_payload(int payload);
 
 static void *register_to_atlas_client(){
     
     ATLAS_LOGGER_DEBUG("DP: Register to atlas_client");
-    
-    int rc;
-
-    if ( (fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-	ATLAS_LOGGER_ERROR("DP: Socket error");
-    }
 
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
@@ -55,32 +51,25 @@ static void *register_to_atlas_client(){
     else {
 	strncpy(addr.sun_path, socket_path, sizeof(addr.sun_path)-1);
     }
-    rc = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
-    while(rc == -1){
-	sleep(1);
-	ATLAS_LOGGER_ERROR("DP: Connect error");
-	rc = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
-    }
+
+    socket_connect();
 
     send_username_command(client.username);
-    sleep(1);
 
     send_clientid_command(client.clientid);
-    sleep(1);
 
     send_policy_command(client.policy);
-    sleep(1);
     
     while(1){
 	send_packets_per_minute_command(payload_samples);
-	sleep(1);
 
 	send_packets_avg_command(payload_avg);
-	sleep(1);
 	
 	restore_payload();
+
 	sleep(SLEEPTIME);
     }
+    return NULL;
 }
 
 static void send_username_command(){
@@ -91,7 +80,7 @@ static void send_username_command(){
     cmd_batch = atlas_cmd_batch_new();
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_USERNAME, strlen(client.username), (uint8_t *)client.username);
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-    write_to_socket(cmd_buf);
+    write_to_socket(cmd_buf, cmd_len);
     
     atlas_cmd_batch_free(cmd_batch);
 }
@@ -104,7 +93,7 @@ static void send_clientid_command(){
     cmd_batch = atlas_cmd_batch_new();
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_CLIENTID, strlen(client.clientid), (uint8_t *)client.clientid);
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-    write_to_socket(cmd_buf);
+    write_to_socket(cmd_buf, cmd_len);
     
     atlas_cmd_batch_free(cmd_batch);
 }
@@ -117,7 +106,7 @@ static void send_policy_command(){
     cmd_batch = atlas_cmd_batch_new();
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY, sizeof(client.policy), (uint8_t *)&client.policy);
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-    write_to_socket(cmd_buf);
+    write_to_socket(cmd_buf, cmd_len);
     
     atlas_cmd_batch_free(cmd_batch);
 }
@@ -130,7 +119,7 @@ static void send_packets_per_minute_command(){
     cmd_batch = atlas_cmd_batch_new();
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE, sizeof(payload_samples), (uint8_t *)&payload_samples);
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-    write_to_socket(cmd_buf);
+    write_to_socket(cmd_buf, cmd_len);
     
     atlas_cmd_batch_free(cmd_batch);
 }
@@ -143,15 +132,29 @@ static void send_packets_avg_command(){
     cmd_batch = atlas_cmd_batch_new();
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_AVG, sizeof(payload_avg), (uint8_t *)&payload_avg);
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-    write_to_socket(cmd_buf);
+    write_to_socket(cmd_buf, cmd_len);
     
     atlas_cmd_batch_free(cmd_batch);
 }
 
-static void write_to_socket(uint8_t* buffer){
+static void socket_connect(){
+    if ( (fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+	ATLAS_LOGGER_ERROR("DP: Socket error");
+    }
+
+    int rc = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
+    while(rc == -1){
+	sleep(1);
+	ATLAS_LOGGER_ERROR("DP: Connect error");
+	rc = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
+    }
+    ATLAS_LOGGER_DEBUG("DP: Socket connected");
+}
+
+static void write_to_socket(uint8_t* cmd_buf, uint16_t cmd_len){
     int n = -1;
     while(n<0){
-	n = write(fd, (char*)&buffer, sizeof(buffer));   
+	n = write(fd, (char*)&cmd_buf, cmd_len);   
 	if (n < 0){
 	     ATLAS_LOGGER_ERROR("DP: ERROR writing to socket.");  
 	     close(fd);
@@ -161,7 +164,7 @@ static void write_to_socket(uint8_t* buffer){
 	     if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
 		ATLAS_LOGGER_ERROR("DP: Connect error");
 	     }
-	     n = write(fd, (char*)&buffer, sizeof(buffer));   
+	     n = write(fd, (char*)&cmd_buf, cmd_len);   
 	 }
      }
 }	

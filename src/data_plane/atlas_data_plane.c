@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "atlas_client.h"
 #include "MQTTClient.h"
 #include "../logger/atlas_logger.h"
@@ -52,7 +53,7 @@ void delivered(void *context, MQTTClient_deliveryToken dt){
 
 int msgarrvd(void *context, char *topicName, int topicLen, 
 	    MQTTClient_message *message){
-    printf("   message: %s\n", message->payload);
+   
     atlas_pkt_received(message->payloadlen);
     
     MQTTClient_freeMessage(&message);
@@ -63,8 +64,6 @@ int msgarrvd(void *context, char *topicName, int topicLen,
 MQTTClient start_MQTTclient(){
     MQTTClient client;
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
-    MQTTClient_message pubmsg = MQTTClient_message_initializer;
-    MQTTClient_deliveryToken token = 0;
     int rc;
 
     if(MQTTClient_create(&client, ADDRESS, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL) 
