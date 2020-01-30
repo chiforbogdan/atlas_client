@@ -159,7 +159,7 @@ const char *
 atlas_identity_get()
 {
     //return identity;
-    /* Temporary workaround until the gateway supports multiple identities */
+    /* FIXME Temporary workaround until the gateway supports multiple identities */
     return "test1";
 }
 
@@ -167,7 +167,7 @@ const char *
 atlas_psk_get()
 {
     //return psk;
-    /* Temporary workaround until the gateway supports multiple identities */
+    /* FIXME Temporary workaround until the gateway supports multiple identities */
     return "12345678";
 }
 
