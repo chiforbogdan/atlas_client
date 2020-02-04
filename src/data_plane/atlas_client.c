@@ -10,7 +10,7 @@
 #include "../commands/atlas_command_types.h"
 #include "MQTTClient.h"
 
-#define SLEEPTIME 5
+#define SLEEPTIME 60
 
 char *socket_path = "\0hidden";
 int fd;
