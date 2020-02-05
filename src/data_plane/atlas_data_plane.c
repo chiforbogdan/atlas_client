@@ -7,7 +7,7 @@
 #include "MQTTClient.h"
 #include "../logger/atlas_logger.h"
 
-#define ADDRESS "tcp://127.0.0.1:1883"
+
 #define CLIENTID "client"
 #define QOS 1
 #define TIMEOUT 1000L
@@ -94,12 +94,12 @@ int msgarrvd(void *context, char *topicName, int topicLen,
     return 1;
 }
 
-MQTTClient start_MQTTclient(char *topics){
+MQTTClient start_MQTTclient(char *topics, char* serverURI){
     MQTTClient client;
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
     int rc;
 
-    if(MQTTClient_create(&client, ADDRESS, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL) 
+    if(MQTTClient_create(&client, serverURI, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL) 
 		!= MQTTCLIENT_SUCCESS){
         ATLAS_LOGGER_ERROR("Failed to create MQTTclient.");
     }
@@ -126,7 +126,7 @@ MQTTClient start_MQTTclient(char *topics){
 }
 
 int verify_arguments(int argc, char** argv){
-    if(!(argc < 5 || strcmp(argv[1], "--publish") || strcmp(argv[3], "--subscribe")))
+    if(!(argc < 7 || strcmp(argv[1], "--publish") || strcmp(argv[3], "--subscribe") || strcmp(argv[5], "--serverURI")))
         return 1; 
     return 0;
 } 
@@ -157,7 +157,7 @@ static void traffic_generator(MQTTClient atlasMQTTclient, char* str){
 
 static void print_usage()
 {
-    printf("Usage: ./data_plane --publish \"feature1:X1:Y1:Z1, feature2:X2:Y2:Z2\" --subscribe \"feature1, feature2\"\n");
+    printf("Usage: ./data_plane --publish \"feature1:X1:Y1:Z1, feature2:X2:Y2:Z2\" --subscribe \"feature1, feature2\" --serverURI protocol://host:port\n");
 }
 
 
@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
             atlas_init( "username", "clientid", 10);
         
             /* start MQTT client */
-            atlasMQTTclient = start_MQTTclient(argv[4]);
+            atlasMQTTclient = start_MQTTclient(argv[4], argv[6]);
         
             traffic_generator(atlasMQTTclient, argv[2]);
         }  
