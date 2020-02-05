@@ -5,6 +5,7 @@
 #include "../coap/atlas_coap_client.h"
 #include "../register/atlas_register.h"
 #include "../alarm/atlas_alarm.h"
+#include "../utils/atlas_config.h"
 
 #define ATLAS_CLIENT_TELEMETRY_FEATURE_TIMEOUT_MS (40000)
 

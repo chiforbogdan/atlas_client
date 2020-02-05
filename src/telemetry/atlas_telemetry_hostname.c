@@ -10,9 +10,11 @@
 #include "../commands/atlas_command_types.h"
 #include "../identity/atlas_identity.h"
 #include "atlas_telemetry.h"
+#include "../utils/atlas_config.h"
 
 #define ATLAS_HOSTNAME_FILE "/etc/hostname"
 #define ATLAS_HOSTNAME_MAX_LEN (32)
+#define ATLAS_HOSTNAME_PATH "gateway/telemetry/hostname"
 
 static void
 atlas_telemetry_payload_hostname(uint8_t **payload, uint16_t *payload_len,
@@ -72,7 +74,11 @@ void
 atlas_telemetry_add_hostname()
 {
     ATLAS_LOGGER_DEBUG("Add hostname telemetry feature");
+    
+    char uri[ATLAS_URI_MAX_LEN] = { 0 };
+    
+    atlas_cfg_coap_get_uri(ATLAS_HOSTNAME_PATH, uri);
 
-    atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/hostname", atlas_telemetry_payload_hostname);
+    atlas_telemetry_add(uri, atlas_telemetry_payload_hostname);
 }
 
