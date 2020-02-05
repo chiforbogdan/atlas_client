@@ -36,18 +36,20 @@ static int random_number_generator(int base_value, int deviation){
 
 void* publish(void* args){
     while(1){
-        pubmsg.qos = QOS;
-        pubmsg.retained = 0;
-        
 
+        char buff[256];
         char publish_msg[20];
         sprintf(publish_msg, "%d", random_number_generator(((publish_struct_t*)args)->base_value, ((publish_struct_t*)args)->deviation));
-         
+
+	    sprintf(buff, "atlas/%s", ((publish_struct_t*)args)->feature);
+
+        pubmsg.qos = QOS;
+        pubmsg.retained = 0;
         pubmsg.payload = publish_msg;
         pubmsg.payloadlen = strlen(publish_msg);
-        MQTTClient_publishMessage(atlasMQTTclient, ((publish_struct_t*)args)->feature, &pubmsg, &token);
+        MQTTClient_publishMessage(atlasMQTTclient, buff, &pubmsg, &token);
         MQTTClient_waitForCompletion(atlasMQTTclient, token, TIMEOUT);
-        char buff[256];
+        
         sprintf(buff, "DP: Message %s with delivery token %d delivered.", publish_msg, token);
         ATLAS_LOGGER_DEBUG(buff);
         sleep(((publish_struct_t*)args)->publish_rate);
@@ -57,9 +59,12 @@ void* publish(void* args){
 }
 
 void subscribe(MQTTClient client, char* topic){
-	MQTTClient_subscribe(client, topic, QOS);
+
 	char buff[256];
-	sprintf(buff, "Subscribing to topic %s for client %s using QOS %d\n", topic, CLIENTID, QOS);
+	sprintf(buff, "atlas/%s", topic);
+	MQTTClient_subscribe(client, buff, QOS);
+
+	sprintf(buff, "Subscribing to topic atlas/%s for client %s using QOS %d\n", topic, CLIENTID, QOS);
 	ATLAS_LOGGER_DEBUG(buff);
  	
 }
@@ -93,7 +98,6 @@ MQTTClient start_MQTTclient(char *topics){
     MQTTClient client;
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
     int rc;
-    char buff[256];
 
     if(MQTTClient_create(&client, ADDRESS, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL) 
 		!= MQTTCLIENT_SUCCESS){
@@ -113,10 +117,8 @@ MQTTClient start_MQTTclient(char *topics){
     char *p = strtok(topics, ",");
     
     while(p ){
-        MQTTClient_subscribe(client, p, QOS);
-        
-        sprintf(buff, "Subscribing to topic %s for client %s using QOS %d\n", p, CLIENTID, QOS);
-        ATLAS_LOGGER_DEBUG(buff);
+        subscribe(client, p);
+                
         p = strtok(NULL, ",");
     }
        
