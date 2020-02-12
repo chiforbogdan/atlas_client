@@ -148,6 +148,11 @@ send_keepalive_command()
     uint16_t cmd_len = 0;
     const char *identity = atlas_identity_get();
     char uri[ATLAS_URI_MAX_LEN] = { 0 };
+    char ipPort[ATLAS_IP_MAX_LEN+6] = { 0 };
+
+    status = atlas_cfg_get_local_ipPort(ipPort);
+    if (status != ATLAS_OK)
+        ATLAS_LOGGER_ERROR("Error when getting local ip address & port");
     
     cmd_batch = atlas_cmd_batch_new();
 
@@ -157,6 +162,9 @@ send_keepalive_command()
     /* Add keep-alive token */
     ka_token++;
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_KEEPALIVE, sizeof(ka_token), (uint8_t *) &ka_token);
+
+    /* Add ip address */
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_IP_PORT, strlen(ipPort), (uint8_t *)ipPort);
 
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
 
@@ -179,10 +187,18 @@ send_register_command()
     uint16_t cmd_len = 0;
     const char *identity = atlas_identity_get();
     char uri[ATLAS_URI_MAX_LEN] = { 0 };
+    char ipPort[ATLAS_IP_MAX_LEN+6] = { 0 };
+
+    status = atlas_cfg_get_local_ipPort(ipPort);
+    if (status != ATLAS_OK)
+        ATLAS_LOGGER_ERROR("Error when getting local ip address & port");
     
     cmd_batch = atlas_cmd_batch_new();
 
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_REGISTER, strlen(identity), (uint8_t *)identity);
+
+    /* Add ip address */
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_IP_PORT, strlen(ipPort), (uint8_t *)ipPort);
 
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
 

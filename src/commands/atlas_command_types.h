@@ -12,7 +12,10 @@ typedef enum _atlas_cmd_type
     /* Identity command: payload is the client identity */
     ATLAS_CMD_IDENTITY,
 
-     /* Telemetry hostname command: payload is client hostname */
+    /* IP command: payload is the local IP address used by gateway to connect to the client*/
+    ATLAS_CMD_IP_PORT,
+
+    /* Telemetry hostname command: payload is client hostname */
     ATLAS_CMD_TELEMETRY_HOSTNAME,
 
     /* Telemetry kernel info command: payload is client kernel info */
