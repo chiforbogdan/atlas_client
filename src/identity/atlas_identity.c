@@ -55,6 +55,8 @@ to_base64(const uint8_t *in, size_t in_len, char *out, size_t out_len)
     BUF_MEM *bptr;
 
     b64 = BIO_new(BIO_f_base64());
+    BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+    
     bmem = BIO_new(BIO_s_mem());
     b64 = BIO_push(b64, bmem);
     BIO_write(b64, in, in_len);
@@ -158,16 +160,12 @@ ERR:
 const char *
 atlas_identity_get()
 {
-    //return identity;
-    /* FIXME Temporary workaround until the gateway supports multiple identities */
-    return "test1";
+    return identity;
 }
 
 const char *
 atlas_psk_get()
 {
-    //return psk;
-    /* FIXME Temporary workaround until the gateway supports multiple identities */
-    return "12345678";
+    return psk;
 }
 
