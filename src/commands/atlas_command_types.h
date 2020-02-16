@@ -16,7 +16,7 @@ typedef enum _atlas_cmd_type
     ATLAS_CMD_IP_PORT,
 
     /* Telemetry hostname command: payload is client hostname */
-    ATLAS_CMD_TELEMETRY_HOSTNAME,
+    ATLAS_CMD_TELEMETRY_HOSTNAME = 500,
 
     /* Telemetry kernel info command: payload is client kernel info */
     ATLAS_CMD_TELEMETRY_KERN_INFO,
