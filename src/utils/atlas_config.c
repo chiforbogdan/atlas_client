@@ -158,7 +158,8 @@ atlas_cfg_get_local_ipPort(char *ipPort)
     snprintf(port, ATLAS_PORT_MAX_LEN, "%d", atlas_cfg_get_local_port());
 
     strncpy(ipPort, ip, ATLAS_IP_MAX_LEN);  
-    strncat(ipPort, ":", 1);
+    strcat(ipPort, ":");
     strncat(ipPort, port, ATLAS_PORT_MAX_LEN);
     return ATLAS_OK;
 }
+
