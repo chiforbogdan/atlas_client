@@ -103,7 +103,7 @@ main(int argc, char **argv)
 
     /* Start server */
     local_port = atlas_cfg_get_local_port();
-    if (atlas_coap_server_start(local_port, ATLAS_COAP_SERVER_MODE_BOTH, atlas_psk_get()) != ATLAS_OK) {
+    if (atlas_coap_server_start(local_port, ATLAS_COAP_SERVER_MODE_DTLS_PSK, atlas_psk_get()) != ATLAS_OK) {
         ATLAS_LOGGER_INFO("Cannot start CoAP server");
         return -1;
     }
