@@ -3,6 +3,7 @@
 
 #include "atlas_status.h"
 
+#define ATLAS_PORT_MAX_LEN (6)
 #define ATLAS_IP_MAX_LEN (16)
 #define ATLAS_URI_MAX_LEN (128)
 
@@ -72,5 +73,12 @@ uint16_t atlas_cfg_get_local_port();
 * return none
 */
 void atlas_cfg_coap_get_uri(const char *path, char *uri);
+
+/**
+ * @brief Get local IP address concatenated with port for the configured local interface
+ * @param[out] ip IP address+port
+ * @return none
+ */
+atlas_status_t atlas_cfg_get_local_ipPort(char *ipPort);
 
 #endif /* __ATLAS_CONFIG_H__ */

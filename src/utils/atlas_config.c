@@ -144,3 +144,22 @@ void atlas_cfg_coap_get_uri(const char *path, char *uri)
     strcat(uri, path); 
 }
 
+atlas_status_t
+atlas_cfg_get_local_ipPort(char *ipPort)
+{
+    atlas_status_t status;
+    char ip[ATLAS_IP_MAX_LEN] = { 0 };
+    char port[ATLAS_PORT_MAX_LEN] = { 0 };
+
+    status = atlas_cfg_get_local_ip(ip);
+    if (status != ATLAS_OK)
+        return status;
+        
+    snprintf(port, ATLAS_PORT_MAX_LEN, "%d", atlas_cfg_get_local_port());
+
+    strncpy(ipPort, ip, ATLAS_IP_MAX_LEN);  
+    strcat(ipPort, ":");
+    strncat(ipPort, port, ATLAS_PORT_MAX_LEN);
+    return ATLAS_OK;
+}
+
