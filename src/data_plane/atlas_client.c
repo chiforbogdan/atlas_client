@@ -36,7 +36,6 @@ static void send_packets_avg_command();
 static void write_to_socket(uint8_t* buffer,uint16_t cmd_len);
 static void socket_connect();
 static void restore_payload();
-static void increment_payload(int payload);
 
 static void *register_to_atlas_client(){
     
@@ -162,9 +161,8 @@ static void write_to_socket(uint8_t* cmd_buf, uint16_t cmd_len){
 	     socket_connect();
 	     
 	     n = write(fd, (char*)&cmd_buf, cmd_len);   
-	 }
-     }
-}	
+    }
+}
 
 static void restore_payload(){
 
