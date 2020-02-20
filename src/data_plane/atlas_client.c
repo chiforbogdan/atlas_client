@@ -132,7 +132,7 @@ static void socket_connect(){
 }
 
 static void write_to_socket(uint8_t* cmd_buf, uint16_t cmd_len){
-    int n = write(fd, (char*)&cmd_buf, cmd_len); 
+    int n = write(fd, cmd_buf, cmd_len); 
     printf("\n%d\n ",n) ;  
 
     while(n<0){
