@@ -23,16 +23,14 @@ int payload_samples = 0, payload_total = 0, payload_avg = 0;
 struct registration{
     char* username;
     char* clientid;
-    uint16_t policy;
+    uint16_t packets_per_min;
+    uint16_t packets_avg;
 }client;
 
 
 static void *register_to_atlas_client();
-static void send_username_command();
-static void send_clientid_command();
-static void send_policy_command();
-static void send_packets_per_minute_command();
-static void send_packets_avg_command();
+static void send_registration_command();
+static void send_statistics_command();
 static void write_to_socket(uint8_t* buffer,uint16_t cmd_len);
 static void socket_connect();
 static void restore_payload();
@@ -52,89 +50,70 @@ static void *register_to_atlas_client(){
     }
 
     socket_connect();
-
-    send_username_command(client.username);
-
-    send_clientid_command(client.clientid);
-
-    send_policy_command(client.policy);
+    
+    send_registration_command();
     
     while(1){
-	send_packets_per_minute_command(payload_samples);
-
-	send_packets_avg_command(payload_avg);
+        
+        send_statistics_command();
 	
-	restore_payload();
+        restore_payload();
 
-	sleep(SLEEPTIME);
+        sleep(SLEEPTIME);
     }
     return NULL;
 }
 
-static void send_username_command(){
+static void send_registration_command()
+{
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
     uint16_t cmd_len = 0;
     
     cmd_batch = atlas_cmd_batch_new();
+    
+    /* Add username */
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_USERNAME, strlen(client.username), (uint8_t *)client.username);
-    atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-    write_to_socket(cmd_buf, cmd_len);
     
-    atlas_cmd_batch_free(cmd_batch);
-}
-
-static void send_clientid_command(){
-    atlas_cmd_batch_t *cmd_batch;
-    uint8_t *cmd_buf = NULL;
-    uint16_t cmd_len = 0;
-    
-    cmd_batch = atlas_cmd_batch_new();
+    /* Add client_id */
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_CLIENTID, strlen(client.clientid), (uint8_t *)client.clientid);
+    
+    /* Add policy packets per minute */
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE, sizeof(client.packets_per_min), (uint8_t *)&client.packets_per_min);
+    
+    /* Add policy packets average length*/
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG, sizeof(client.packets_avg), (uint8_t *)&client.packets_avg);
+    
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
     write_to_socket(cmd_buf, cmd_len);
     
     atlas_cmd_batch_free(cmd_batch);
+    
 }
 
-static void send_policy_command(){
+static void send_statistics_command()
+{
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
     uint16_t cmd_len = 0;
     
     cmd_batch = atlas_cmd_batch_new();
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY, sizeof(client.policy), (uint8_t *)&client.policy);
-    atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-    write_to_socket(cmd_buf, cmd_len);
     
-    atlas_cmd_batch_free(cmd_batch);
-}
-
-static void send_packets_per_minute_command(){
-    atlas_cmd_batch_t *cmd_batch;
-    uint8_t *cmd_buf = NULL;
-    uint16_t cmd_len = 0;
     
-    cmd_batch = atlas_cmd_batch_new();
+    /* Add packets per minute received*/
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE, sizeof(payload_samples), (uint8_t *)&payload_samples);
+    
+    /* Add average length of received packets */
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_AVG, sizeof(payload_avg), (uint8_t *)&payload_avg);
+    
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
     write_to_socket(cmd_buf, cmd_len);
     
     atlas_cmd_batch_free(cmd_batch);
 }
 
-static void send_packets_avg_command(){
-    atlas_cmd_batch_t *cmd_batch;
-    uint8_t *cmd_buf = NULL;
-    uint16_t cmd_len = 0;
-    
-    cmd_batch = atlas_cmd_batch_new();
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_AVG, sizeof(payload_avg), (uint8_t *)&payload_avg);
-    atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-    write_to_socket(cmd_buf, cmd_len);
-    
-    atlas_cmd_batch_free(cmd_batch);
-}
+
+
 
 static void socket_connect(){
     if ( (fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
@@ -151,7 +130,6 @@ static void socket_connect(){
 }
 
 static void write_to_socket(uint8_t* cmd_buf, uint16_t cmd_len){
-    
     int n = write(fd, (char*)&cmd_buf, cmd_len);   
 
     while(n<0){
@@ -162,7 +140,7 @@ static void write_to_socket(uint8_t* cmd_buf, uint16_t cmd_len){
 	     socket_connect();
 	     
 	     n = write(fd, (char*)&cmd_buf, cmd_len);   
-    }
+     }
 }	
 
 static void restore_payload(){
@@ -187,11 +165,12 @@ void atlas_pkt_received(int payload)
     pthread_mutex_unlock(&mutex);
 }
 
-void atlas_init( char* user, char* client_id, uint16_t pol)
+void atlas_init( char* user, char* client_id, uint16_t ppm, uint16_t pack_avg)
 {
     client.username = strdup(user);
     client.clientid = strdup(client_id);
-    client.policy = pol; 
+    client.packets_per_min = ppm; 
+    client.packets_avg = pack_avg; 
 
     pthread_create(&init_t, NULL, &register_to_atlas_client, NULL);
 }

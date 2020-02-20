@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-void atlas_init(char* user, char* client_id, uint16_t pol);
+void atlas_init(char* user, char* client_id, uint16_t ppm, uint16_t pack_avg);
 
 void atlas_pkt_received(int payload);
 

@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
 {
     
         if(verify_arguments(argc, argv)){
-            atlas_init( "username", "clientid", 10);
+            atlas_init( "username", "clientid", 10, 50);
         
             /* start MQTT client */
             atlasMQTTclient = start_MQTTclient(argv[4], argv[6]);

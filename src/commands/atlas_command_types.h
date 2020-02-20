@@ -82,8 +82,11 @@ typedef enum _atlas_cmd_type
     /* ClientID command: payload is the client id */
     ATLAS_CMD_DATA_PLANE_CLIENTID,
     
-    /* Policy command: payload is the policy value */
-    ATLAS_CMD_DATA_PLANE_POLICY,
+    /* Policy command: payload is the policy packets_per_minute value */
+    ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE,
+    
+    /* Policy command: payload is the policy packets_average_length value */
+    ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG,
     
     /* Packets per minute command: payload is the number of received packets per minute */
     ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE,
