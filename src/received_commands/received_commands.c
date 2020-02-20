@@ -97,26 +97,25 @@ atlas_receive_commands_start()
 
 		
 		cmd_batch = atlas_cmd_batch_new();
-		status = atlas_cmd_batch_set_raw(cmd_batch, (uint8_t*)buf, strlen(buf));
+		status = atlas_cmd_batch_set_raw(cmd_batch, (uint8_t*)buf, rc);
 		
 		
 		if (status != ATLAS_OK) {
 			//ATLAS_LOGGER_ERROR("Corrupted command from data plane");
 			printf("Corrupted command from data plane\n");
 			status = ATLAS_CORRUPTED_COMMAND;
-			break;
 		}
 		
 		printf("aici\n");
 		
-		cmd = atlas_cmd_batch_get(cmd_batch, NULL);
+		/*cmd = atlas_cmd_batch_get(cmd_batch, NULL);
 		while (cmd) {
 			if (cmd->type == ATLAS_CMD_DATA_PLANE_USERNAME ) {
 				printf("Am primit USERNAME %u");
 			}
 
 			cmd = atlas_cmd_batch_get(cmd_batch, cmd);
-		}
+		}*/
 		atlas_cmd_batch_free(cmd_batch);
     }
     if (rc == -1) {

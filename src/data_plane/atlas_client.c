@@ -51,7 +51,7 @@ static void *register_to_atlas_client(){
 
     socket_connect();
     
-    send_registration_command();
+    //send_registration_command();
     sleep (2);
     
     while(1){
@@ -67,6 +67,7 @@ static void *register_to_atlas_client(){
 
 static void send_registration_command()
 {
+    printf("send_registration_command");
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
     uint16_t cmd_len = 0;
@@ -105,7 +106,7 @@ static void send_statistics_command()
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE, sizeof(payload_samples), (uint8_t *)&payload_samples);
     
     /* Add average length of received packets */
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_AVG, sizeof(payload_avg), (uint8_t *)&payload_avg);
+    //atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_AVG, sizeof(payload_avg), (uint8_t *)&payload_avg);
     
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
     write_to_socket(cmd_buf, cmd_len);
@@ -131,7 +132,8 @@ static void socket_connect(){
 }
 
 static void write_to_socket(uint8_t* cmd_buf, uint16_t cmd_len){
-    int n = write(fd, (char*)&cmd_buf, cmd_len);   
+    int n = write(fd, (char*)&cmd_buf, cmd_len); 
+    printf("\n%d\n ",n) ;  
 
     while(n<0){
 	     ATLAS_LOGGER_ERROR("DP: ERROR writing to socket.");  
@@ -140,7 +142,8 @@ static void write_to_socket(uint8_t* cmd_buf, uint16_t cmd_len){
 	    
 	     socket_connect();
 	     
-	     n = write(fd, (char*)&cmd_buf, cmd_len);   
+	     n = write(fd, (char*)&cmd_buf, cmd_len);  
+         printf("%d\n ",n) ;
      }
 }	
 
