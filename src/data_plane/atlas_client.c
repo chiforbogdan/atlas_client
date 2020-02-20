@@ -10,7 +10,7 @@
 #include "../commands/atlas_command_types.h"
 #include "MQTTClient.h"
 
-#define SLEEPTIME 60
+#define SLEEPTIME 5
 
 char *socket_path = "\0hidden";
 int fd;
@@ -51,8 +51,8 @@ static void *register_to_atlas_client(){
 
     socket_connect();
     
-    //send_registration_command();
-    sleep (2);
+    send_registration_command();
+   
     
     while(1){
         
@@ -106,7 +106,7 @@ static void send_statistics_command()
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE, sizeof(payload_samples), (uint8_t *)&payload_samples);
     
     /* Add average length of received packets */
-    //atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_AVG, sizeof(payload_avg), (uint8_t *)&payload_avg);
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_AVG, sizeof(payload_avg), (uint8_t *)&payload_avg);
     
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
     write_to_socket(cmd_buf, cmd_len);
@@ -119,31 +119,29 @@ static void send_statistics_command()
 
 static void socket_connect(){
     if ( (fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-	ATLAS_LOGGER_ERROR("DP: Socket error");
+        ATLAS_LOGGER_ERROR("DP: Socket error");
     }
 
     int rc = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
     while(rc == -1){
 	sleep(1);
-	ATLAS_LOGGER_ERROR("DP: Connect error");
-	rc = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
+        ATLAS_LOGGER_ERROR("DP: Connect error");
+        rc = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
     }
     ATLAS_LOGGER_DEBUG("DP: Socket connected");
 }
 
 static void write_to_socket(uint8_t* cmd_buf, uint16_t cmd_len){
     int n = write(fd, cmd_buf, cmd_len); 
-    printf("\n%d\n ",n) ;  
 
     while(n<0){
-	     ATLAS_LOGGER_ERROR("DP: ERROR writing to socket.");  
+	     ATLAS_LOGGER_ERROR("DP: ERROR writing to socket."); 
 	     close(fd);
 	     sleep(2);
 	    
 	     socket_connect();
 	     
-	     n = write(fd, (char*)&cmd_buf, cmd_len);  
-         printf("%d\n ",n) ;
+	     n = write(fd, cmd_buf, cmd_len);  
      }
 }	
 
