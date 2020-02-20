@@ -51,7 +51,7 @@ void* publish(void* args){
         MQTTClient_waitForCompletion(atlasMQTTclient, token, TIMEOUT);
         
         sprintf(buff, "DP: Message %s with delivery token %d delivered.", publish_msg, token);
-        ATLAS_LOGGER_DEBUG(buff);
+        //ATLAS_LOGGER_DEBUG(buff);
         sleep(((publish_struct_t*)args)->publish_rate);
     }
     

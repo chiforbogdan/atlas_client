@@ -52,6 +52,7 @@ static void *register_to_atlas_client(){
     socket_connect();
     
     send_registration_command();
+    sleep (2);
     
     while(1){
         

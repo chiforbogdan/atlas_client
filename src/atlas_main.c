@@ -112,6 +112,8 @@ main(int argc, char **argv)
     
     /* Init telemetry features */
     atlas_telemetry_features_init();
+    
+    atlas_receive_commands_start();
 
     /* Run scheduler main loop */
     atlas_sched_loop();
