@@ -5,7 +5,7 @@
 #include "../scheduler/atlas_scheduler.h"
 
 
-
+int atlas_receive_commands_start();
 
 
 #endif /* __ATLAS_SERVER_RECEIVED_COMMANDS_H__ */

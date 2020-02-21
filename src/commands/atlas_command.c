@@ -79,22 +79,15 @@ atlas_cmd_batch_set_raw(atlas_cmd_batch_t *cmd_batch, const uint8_t *buf, uint16
     /* Validate buffer */
     while(tmp_len > 0) {
         /* Validate type */
-        if (tmp_len < sizeof(uint16_t)){
-            printf("eroare1 \n");
-
+        if (tmp_len < sizeof(uint16_t))
             return ATLAS_CORRUPTED_COMMAND;
-        }
         
         p += sizeof(uint16_t);
         tmp_len -= sizeof(uint16_t);
     
         /* Validate length */
-        if (tmp_len < sizeof(uint16_t)){
-                        printf("eroare2 \n");
-
+        if (tmp_len < sizeof(uint16_t))
             return ATLAS_CORRUPTED_COMMAND;
-            
-        }
 
         memcpy(&cmd_len, p, sizeof(uint16_t));
         cmd_len = ntohs(cmd_len);
@@ -102,10 +95,9 @@ atlas_cmd_batch_set_raw(atlas_cmd_batch_t *cmd_batch, const uint8_t *buf, uint16
         tmp_len -= sizeof(uint16_t);
     
         /* Validate value */
-        if (tmp_len < cmd_len){
-            printf("eroare3 \n");
+        if (tmp_len < cmd_len)
             return ATLAS_CORRUPTED_COMMAND;
-        }
+        
 
         p += cmd_len;
         tmp_len -= cmd_len; 

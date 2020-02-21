@@ -67,7 +67,6 @@ static void *register_to_atlas_client(){
 
 static void send_registration_command()
 {
-    printf("send_registration_command");
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
     uint16_t cmd_len = 0;

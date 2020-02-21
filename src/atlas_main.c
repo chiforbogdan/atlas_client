@@ -11,6 +11,7 @@
 #include "register/atlas_register.h"
 #include "telemetry/atlas_telemetry_features.h"
 #include "utils/atlas_config.h"
+#include "received_commands/received_commands.h"
 
 static void
 print_usage()
