@@ -76,11 +76,16 @@ typedef enum _atlas_cmd_type
 
     /* Command types shared with the data plane agent */
 
+    /* Policy command: payload is ATLAS_CMD_DATA_PLANE_POLICY_USERNAME,
+     * ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE,
+     * ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG */
+    ATLAS_CMD_DATA_PLANE_POLICY = 1000,
+
     /* Username command: payload is the client username */
-    ATLAS_CMD_DATA_PLANE_USERNAME = 1000,
+    ATLAS_CMD_DATA_PLANE_POLICY_USERNAME,
     
     /* ClientID command: payload is the client id */
-    ATLAS_CMD_DATA_PLANE_CLIENTID,
+    ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID,
     
     /* Policy command: payload is the policy packets_per_minute value */
     ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE,

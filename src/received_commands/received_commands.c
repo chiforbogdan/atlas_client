@@ -102,7 +102,7 @@ send_policy_command()
     cmd_batch = atlas_cmd_batch_new();
 
     /* Add MQTT clientID */
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_CLIENTID, strlen((char*)username), username);
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID, strlen((char*)username), username);
 
     /* Add policy packets per minute value */
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE, sizeof(policy_packets_per_min), (uint8_t *) &policy_packets_per_min);
@@ -123,6 +123,51 @@ send_policy_command()
 }
 
 static void
+atlas_data_plane_parse_policy(const uint8_t *buf, uint16_t buf_len)
+{
+    atlas_cmd_batch_t *cmd_batch;
+    const atlas_cmd_t *cmd;
+    atlas_status_t status;
+
+    if (!buf || !buf_len) {
+        ATLAS_LOGGER_ERROR("Corrupted policy command from data plane");
+        return;	
+    }
+
+    cmd_batch = atlas_cmd_batch_new();
+
+    status = atlas_cmd_batch_set_raw(cmd_batch, buf, buf_len);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Corrupted policy command from data plane");
+        atlas_cmd_batch_free(cmd_batch);
+        return;
+    }
+
+    cmd = atlas_cmd_batch_get(cmd_batch, NULL);
+    while (cmd) {
+        if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_USERNAME) {
+            set_username(cmd->value);
+            printf("Am primit USERNAME %s\n", get_username());
+        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID) {
+            set_clientid(cmd->value);
+            printf("Am primit CLIENTID %s \n", get_clientid());
+        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE ) {
+            set_policy_packets_per_min(cmd->value);
+            printf("Am primit POLICY PACKETS_PER_MINUTE %d \n", get_policy_packets_per_min());
+        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG ) {
+            set_policy_packets_avg(cmd->value);
+            printf("Am primit POLICY PACKETS_AVG %d\n", get_policy_packets_avg());
+	}
+
+        cmd = atlas_cmd_batch_get(cmd_batch, cmd);
+    }
+
+    atlas_cmd_batch_free(cmd_batch);
+
+    send_policy_command();
+}
+
+static void
 atlas_data_plane_read_cb(int fd)
 {
     uint8_t buf[ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN];
@@ -139,7 +184,7 @@ atlas_data_plane_read_cb(int fd)
 
     cmd_batch = atlas_cmd_batch_new();
     
-    status = atlas_cmd_batch_set_raw(cmd_batch, (uint8_t*)buf, rc);
+    status = atlas_cmd_batch_set_raw(cmd_batch, buf, rc);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Corrupted command from data plane");
         atlas_cmd_batch_free(cmd_batch);
@@ -148,18 +193,9 @@ atlas_data_plane_read_cb(int fd)
 
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
     while (cmd) {
-        if (cmd->type == ATLAS_CMD_DATA_PLANE_USERNAME ) {
-            set_username(cmd->value);
-            printf("Am primit USERNAME %s\n", get_username());
-        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_CLIENTID ) {
-            set_clientid(cmd->value);
-            printf("Am primit CLIENTID %s \n", get_clientid());
-        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE ) {
-            set_policy_packets_per_min(cmd->value);
-            printf("Am primit POLICY PACKETS_PER_MINUTE %d \n", get_policy_packets_per_min());
-        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG ) {
-            set_policy_packets_avg(cmd->value);
-            printf("Am primit POLICY PACKETS_AVG %d\n", get_policy_packets_avg());
+        if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY) {
+            atlas_data_plane_parse_policy(cmd->value, cmd->length);
+	    printf("Am primit policy\n");
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE ) {
             printf("Am primit PACKETS_PER_MINUTE\n");
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_AVG ) {
@@ -170,8 +206,6 @@ atlas_data_plane_read_cb(int fd)
     }
 
     atlas_cmd_batch_free(cmd_batch);
-
-    send_policy_command();
 }
 
 static void

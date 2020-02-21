@@ -31,7 +31,7 @@ struct registration{
 static void *register_to_atlas_client();
 static void send_registration_command();
 static void send_statistics_command();
-static void write_to_socket(uint8_t* buffer,uint16_t cmd_len);
+static void write_to_socket(const uint8_t* buffer,uint16_t cmd_len);
 static void socket_connect();
 static void restore_payload();
 
@@ -61,29 +61,45 @@ static void *register_to_atlas_client(){
 
 static void send_registration_command()
 {
-    atlas_cmd_batch_t *cmd_batch;
-    uint8_t *cmd_buf = NULL;
-    uint16_t cmd_len = 0;
+    atlas_cmd_batch_t *cmd_batch_inner;
+    atlas_cmd_batch_t *cmd_batch_outer;
+    uint8_t *cmd_buf_inner = NULL;
+    uint16_t cmd_inner_len = 0;
+    uint8_t *cmd_buf_outer = NULL;
+    uint16_t cmd_outer_len = 0;
     
-    cmd_batch = atlas_cmd_batch_new();
+    /* Create policy payload*/
+    cmd_batch_inner = atlas_cmd_batch_new();
     
     /* Add username */
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_USERNAME, strlen(client.username), (uint8_t *)client.username);
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_POLICY_USERNAME, strlen(client.username),
+                        (uint8_t *)client.username);
     
     /* Add client_id */
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_CLIENTID, strlen(client.clientid), (uint8_t *)client.clientid);
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID, strlen(client.clientid),
+                        (uint8_t *)client.clientid);
     
     /* Add policy packets per minute */
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE, sizeof(client.packets_per_min), (uint8_t *)&client.packets_per_min);
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE,
+                        sizeof(client.packets_per_min), (uint8_t *)&client.packets_per_min);
     
     /* Add policy packets average length*/
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG, sizeof(client.packets_avg), (uint8_t *)&client.packets_avg);
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG,
+                        sizeof(client.packets_avg), (uint8_t *)&client.packets_avg);
     
-    atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-    write_to_socket(cmd_buf, cmd_len);
+    atlas_cmd_batch_get_buf(cmd_batch_inner, &cmd_buf_inner, &cmd_inner_len);
     
-    atlas_cmd_batch_free(cmd_batch);
+    cmd_batch_outer = atlas_cmd_batch_new();
+
+    /* Add inner command: username, client id, packets per minute, packets average length */
+    atlas_cmd_batch_add(cmd_batch_outer, ATLAS_CMD_DATA_PLANE_POLICY, cmd_inner_len, cmd_buf_inner);
+    atlas_cmd_batch_get_buf(cmd_batch_outer, &cmd_buf_outer, &cmd_outer_len);
     
+    /* Send data to atlas_client */
+    write_to_socket(cmd_buf_outer, cmd_outer_len);
+    
+    atlas_cmd_batch_free(cmd_batch_inner);
+    atlas_cmd_batch_free(cmd_batch_outer);
 }
 
 static void send_statistics_command()
@@ -124,7 +140,7 @@ static void socket_connect(){
     ATLAS_LOGGER_DEBUG("DP: Socket connected");
 }
 
-static void write_to_socket(uint8_t* cmd_buf, uint16_t cmd_len){
+static void write_to_socket(const uint8_t* cmd_buf, uint16_t cmd_len){
     int n = write(fd, cmd_buf, cmd_len); 
 
     while(n<0){
