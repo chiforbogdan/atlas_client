@@ -14,27 +14,25 @@
 #include "../coap/atlas_coap_client.h"
 #include "../coap/atlas_coap_response.h"
 #include "../alarm/atlas_alarm.h"
+#include "../utils/atlas_utils.h"
 #include "received_commands.h"
 
+#define ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN (2048)
 #define ATLAS_CLIENT_POLICY_TIMEOUT_MS  (5000)
 #define ATLAS_CLIENT_POLICY_COAP_PATH   "gateway/policy"
 
+static struct sockaddr_un addr;
+static int fd = -1;
+static int cl = -1;
 
-char *socket_path = "\0hidden";
-struct sockaddr_un addr;
-char buf[100];
-char *buffer;
-int fd,cl,rc;
-
-uint8_t* username;
-uint8_t* clientid;
-uint16_t policy_packets_per_min;
-uint16_t policy_packets_avg;
+static uint8_t* username;
+static uint8_t* clientid;
+static uint16_t policy_packets_per_min;
+static uint16_t policy_packets_avg;
 
 static void send_policy_command();
 static void policy_alarm_callback();
 static void policy_callback(const char *uri, atlas_coap_response_t resp_status, const uint8_t *resp_payload, size_t resp_payload_len);
-
 
 static void set_username(const uint8_t *user){
     username = (uint8_t *)user;
@@ -125,115 +123,132 @@ send_policy_command()
 }
 
 static void
-atlas_data_plane_callback(int fd)
-{ 
-    atlas_status_t status = ATLAS_OK;
+atlas_data_plane_read_cb(int fd)
+{
+    uint8_t buf[ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN];
+    atlas_cmd_batch_t *cmd_batch;
+    const atlas_cmd_t *cmd;
+    atlas_status_t status;
+    int rc;
 
-    if ( (cl = accept(fd, NULL, NULL)) == -1) {
-      ATLAS_LOGGER_ERROR("Socket accept error");
+    rc = read(cl, buf, sizeof(buf));
+    if ( rc <= 0) {
+        ATLAS_LOGGER_ERROR("Socket read error");
+        return;
     }
 
-    if ( (rc=read(cl,buf,sizeof(buf))) > 0) {
-
-        atlas_cmd_batch_t *cmd_batch;
-        const atlas_cmd_t *cmd;
-        
-        cmd_batch = atlas_cmd_batch_new();
-        status = atlas_cmd_batch_set_raw(cmd_batch, (uint8_t*)buf, rc);
-        
-        if (status != ATLAS_OK) {
-            ATLAS_LOGGER_ERROR("Corrupted command from data plane");
-            status = ATLAS_CORRUPTED_COMMAND;
-        }
-        
-        cmd = atlas_cmd_batch_get(cmd_batch, NULL);
-        while (cmd) {
-            if (cmd->type == ATLAS_CMD_DATA_PLANE_USERNAME ) {
-                set_username(cmd->value);
-                printf("Am primit USERNAME %s\n", get_username());
-            }
-            else 
-                if (cmd->type == ATLAS_CMD_DATA_PLANE_CLIENTID ) {
-                    set_clientid(cmd->value);
-                    printf("Am primit CLIENTID %s \n", get_clientid());
-                }
-                else
-                    if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE ) {
-                        set_policy_packets_per_min(cmd->value);
-                        printf("Am primit POLICY PACKETS_PER_MINUTE %d \n", get_policy_packets_per_min());
-                    }
-                    else
-                        if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG ) {
-                            set_policy_packets_avg(cmd->value);
-                            printf("Am primit POLICY PACKETS_AVG %d\n", get_policy_packets_avg());
-                        }
-                        else
-                            if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE ) {
-                                printf("Am primit PACKETS_PER_MINUTE\n");
-                            }
-                            else
-                            if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_AVG ) {
-                                printf("Am primit PACKETS_AVG\n");
-                            }
-
-            cmd = atlas_cmd_batch_get(cmd_batch, cmd);
-        }
+    cmd_batch = atlas_cmd_batch_new();
+    
+    status = atlas_cmd_batch_set_raw(cmd_batch, (uint8_t*)buf, rc);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Corrupted command from data plane");
         atlas_cmd_batch_free(cmd_batch);
-        send_policy_command();
-
-    }
-    if (rc == -1) {
-      ATLAS_LOGGER_ERROR("Socket read error");
+        return;
     }
 
+    cmd = atlas_cmd_batch_get(cmd_batch, NULL);
+    while (cmd) {
+        if (cmd->type == ATLAS_CMD_DATA_PLANE_USERNAME ) {
+            set_username(cmd->value);
+            printf("Am primit USERNAME %s\n", get_username());
+        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_CLIENTID ) {
+            set_clientid(cmd->value);
+            printf("Am primit CLIENTID %s \n", get_clientid());
+        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE ) {
+            set_policy_packets_per_min(cmd->value);
+            printf("Am primit POLICY PACKETS_PER_MINUTE %d \n", get_policy_packets_per_min());
+        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG ) {
+            set_policy_packets_avg(cmd->value);
+            printf("Am primit POLICY PACKETS_AVG %d\n", get_policy_packets_avg());
+        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE ) {
+            printf("Am primit PACKETS_PER_MINUTE\n");
+        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_AVG ) {
+            printf("Am primit PACKETS_AVG\n");
+        }
+
+        cmd = atlas_cmd_batch_get(cmd_batch, cmd);
+    }
+
+    atlas_cmd_batch_free(cmd_batch);
+
+    send_policy_command();
+}
+
+static void
+atlas_data_plane_accept_cb(int fd)
+{ 
+    /* Allow only one connection */
+    if (cl != -1) {
+        ATLAS_LOGGER_DEBUG("Close existing unix socket...");
+        atlas_sched_del_entry(cl);	
+	close(cl);
+    }
+
+    cl = accept(fd, NULL, NULL);
+    if (cl == -1) {
+        ATLAS_LOGGER_ERROR("Socket accept error");
+	return;
+    }
+
+    /* FIXME what if a connection already exists */
+    atlas_sched_add_entry(cl, atlas_data_plane_read_cb);
 } 
 
-static void 
-bind_socket(){
-    if ( (fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+static atlas_status_t
+bind_socket()
+{
+    int rc;
+
+    fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd  == -1) {
         ATLAS_LOGGER_ERROR("Socket error");
+        return ATLAS_SOCKET_ERROR;
     }
 
-    int rc = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
-    while (rc == -1){
-        sleep(1);
+    rc = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
+    if (rc == -1){
         ATLAS_LOGGER_ERROR("Socket bind error");
-        rc = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
+        return ATLAS_SOCKET_ERROR;
     }
+
+    return ATLAS_OK;
 }
 
-static void 
-listen_socket(){
-    int rc = listen(fd, 5);
-    while(rc == -1)
-    {
+static atlas_status_t
+listen_socket()
+{
+    int rc;
+    
+    rc = listen(fd, 1);
+    if (rc == -1) {
         ATLAS_LOGGER_ERROR("Socket listen error");
-        rc = listen(fd, 5);
+        return ATLAS_SOCKET_ERROR;
     }
+
+    return ATLAS_OK;
 }
 
-int 
+atlas_status_t
 atlas_receive_commands_start()
 {
-
+    atlas_status_t status;
+    
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
-    if (*socket_path == '\0') {
-        *addr.sun_path = '\0';
-        strncpy(addr.sun_path+1, socket_path+1, sizeof(addr.sun_path)-2);
-    } 
-    else {
-        strncpy(addr.sun_path, socket_path, sizeof(addr.sun_path)-1);
-        unlink(socket_path);
-    }
+    strncpy(addr.sun_path, ATLAS_DATA_PLANE_UNIX_SOCKET_PATH, sizeof(addr.sun_path) - 1);
+    
+    unlink(addr.sun_path);
 
-    bind_socket();
+    status = bind_socket();
+    if (status != ATLAS_OK)
+        return status;
 
-    listen_socket();
+    status = listen_socket();
+    if (status != ATLAS_OK)
+        return ATLAS_OK;
 
-    atlas_sched_add_entry(fd, atlas_data_plane_callback);
+    atlas_sched_add_entry(fd, atlas_data_plane_accept_cb);
 
-    return fd;
+    return ATLAS_OK;
 }
-
 

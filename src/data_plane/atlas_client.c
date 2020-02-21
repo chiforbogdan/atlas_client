@@ -8,11 +8,11 @@
 #include "../logger/atlas_logger.h"
 #include "../commands/atlas_command.h"
 #include "../commands/atlas_command_types.h"
+#include "../utils/atlas_utils.h"
 #include "MQTTClient.h"
 
 #define SLEEPTIME 5
 
-char *socket_path = "\0hidden";
 int fd;
 struct sockaddr_un addr;
 pthread_mutex_t mutex;
@@ -41,13 +41,7 @@ static void *register_to_atlas_client(){
 
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
-    if (*socket_path == '\0') {
-	*addr.sun_path = '\0';
-	strncpy(addr.sun_path+1, socket_path+1, sizeof(addr.sun_path)-2);
-    } 
-    else {
-	strncpy(addr.sun_path, socket_path, sizeof(addr.sun_path)-1);
-    }
+    strncpy(addr.sun_path, ATLAS_DATA_PLANE_UNIX_SOCKET_PATH, sizeof(addr.sun_path) - 1);
 
     socket_connect();
     

@@ -110,11 +110,15 @@ main(int argc, char **argv)
     }
 
     ATLAS_LOGGER_INFO("CoAP server started");
-    
+
+    /* Init commands receiver modules */
+    if (atlas_receive_commands_start() != ATLAS_OK) {
+        ATLAS_LOGGER_INFO("Cannot start receive commands module (data plane agent)");
+	return -1;
+    }
+   
     /* Init telemetry features */
     atlas_telemetry_features_init();
-    
-    atlas_receive_commands_start();
 
     /* Run scheduler main loop */
     atlas_sched_loop();
