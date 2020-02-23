@@ -32,7 +32,7 @@ atlas_alarm_trigger(int fd)
     atlas_alarm_entry_t *p;
     uint64_t res;
 
-    for(p = alarm_entry; p; p = p->next)
+    for(p = alarm_entry; p; p = p->next) {
         if (p->alarm_id == fd) {
             read(fd, &res, sizeof(res));
             /* Run alarm callback */
@@ -46,6 +46,7 @@ atlas_alarm_trigger(int fd)
 
             break;
         }
+    }
 }
 
 atlas_alarm_id_t
@@ -112,6 +113,7 @@ atlas_alarm_cancel(atlas_alarm_id_t alarm_id)
             ATLAS_LOGGER_DEBUG("Alarm is canceled");
 
             atlas_sched_del_entry(p->alarm_id);
+            close(p->alarm_id);
 
             free(p);
 
