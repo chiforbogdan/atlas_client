@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 #include "../scheduler/atlas_scheduler.h"
 #include "../logger/atlas_logger.h"
@@ -96,6 +97,7 @@ send_policy_command()
     atlas_status_t status;
     uint8_t *cmd_buf = NULL;
     uint16_t cmd_len = 0;
+    uint16_t tmp;
 
     char uri[ATLAS_URI_MAX_LEN] = { 0 };
 
@@ -105,10 +107,14 @@ send_policy_command()
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID, strlen((char*)username), username);
 
     /* Add policy packets per minute value */
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE, sizeof(policy_packets_per_min), (uint8_t *) &policy_packets_per_min);
+    tmp = htons(policy_packets_per_min);
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE,
+                        sizeof(policy_packets_per_min), (uint8_t *) &tmp);
 
     /* Add policy packets avg value */
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG, sizeof(policy_packets_avg), (uint8_t *) &policy_packets_avg);
+    tmp = htons(policy_packets_avg);
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG,
+                        sizeof(policy_packets_avg), (uint8_t *) &tmp);
 
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
 
