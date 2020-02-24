@@ -24,7 +24,7 @@ struct registration{
     char* username;
     char* clientid;
     uint16_t packets_per_min;
-    uint16_t packets_avg;
+    uint16_t packets_maxlen;
 }client;
 
 
@@ -84,8 +84,8 @@ static void send_registration_command()
                         sizeof(client.packets_per_min), (uint8_t *)&client.packets_per_min);
     
     /* Add policy packets average length*/
-    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG,
-                        sizeof(client.packets_avg), (uint8_t *)&client.packets_avg);
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_MAXLEN,
+                        sizeof(client.packets_maxlen), (uint8_t *)&client.packets_maxlen);
     
     atlas_cmd_batch_get_buf(cmd_batch_inner, &cmd_buf_inner, &cmd_inner_len);
     
@@ -176,12 +176,12 @@ void atlas_pkt_received(int payload)
     pthread_mutex_unlock(&mutex);
 }
 
-void atlas_init( char* user, char* client_id, uint16_t ppm, uint16_t pack_avg)
+void atlas_init( char* user, char* client_id, uint16_t ppm, uint16_t pack_maxlen)
 {
     client.username = strdup(user);
     client.clientid = strdup(client_id);
     client.packets_per_min = ppm; 
-    client.packets_avg = pack_avg; 
+    client.packets_maxlen = pack_maxlen; 
 
     pthread_create(&init_t, NULL, &register_to_atlas_client, NULL);
 }

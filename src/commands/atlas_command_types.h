@@ -78,7 +78,7 @@ typedef enum _atlas_cmd_type
 
     /* Policy command: payload is ATLAS_CMD_DATA_PLANE_POLICY_USERNAME,
      * ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE,
-     * ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG */
+     * ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_MAXLEN */
     ATLAS_CMD_DATA_PLANE_POLICY = 1000,
 
     /* Username command: payload is the client username */
@@ -90,8 +90,8 @@ typedef enum _atlas_cmd_type
     /* Policy command: payload is the policy packets_per_minute value */
     ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE,
     
-    /* Policy command: payload is the policy packets_average_length value */
-    ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG,
+    /* Policy command: payload is the policy packets_max_length value */
+    ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_MAXLEN,
     
     /* Packets per minute command: payload is the number of received packets per minute */
     ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE,

@@ -29,7 +29,7 @@ static int cl = -1;
 static uint8_t* username;
 static uint8_t* clientid;
 static uint16_t policy_packets_per_min;
-static uint16_t policy_packets_avg;
+static uint16_t policy_packets_maxlen;
 
 static void send_policy_command();
 static void policy_alarm_callback();
@@ -44,8 +44,8 @@ static void set_clientid(const uint8_t *id){
 static void set_policy_packets_per_min(const uint8_t* ppm){
     policy_packets_per_min = ppm[0];
 }
-static void set_policy_packets_avg(const uint8_t* pack_avg){
-    policy_packets_avg= pack_avg[0];
+static void set_policy_packets_maxlen(const uint8_t* pack_maxlen){
+    policy_packets_maxlen= pack_maxlen[0];
 }
 static uint8_t* get_username(){
     return username;
@@ -56,8 +56,8 @@ static uint8_t* get_clientid(){
 static uint16_t get_policy_packets_per_min(){
     return policy_packets_per_min;
 }
-static uint16_t get_policy_packets_avg(){
-    return policy_packets_avg;
+static uint16_t get_policy_packets_maxlen(){
+    return policy_packets_maxlen;
 }
 
 static void
@@ -111,10 +111,10 @@ send_policy_command()
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE,
                         sizeof(policy_packets_per_min), (uint8_t *) &tmp);
 
-    /* Add policy packets avg value */
-    tmp = htons(policy_packets_avg);
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG,
-                        sizeof(policy_packets_avg), (uint8_t *) &tmp);
+    /* Add policy packets maxlen value */
+    tmp = htons(policy_packets_maxlen);
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_MAXLEN,
+                        sizeof(policy_packets_maxlen), (uint8_t *) &tmp);
 
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
 
@@ -160,9 +160,9 @@ atlas_data_plane_parse_policy(const uint8_t *buf, uint16_t buf_len)
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE ) {
             set_policy_packets_per_min(cmd->value);
             printf("Am primit POLICY PACKETS_PER_MINUTE %d \n", get_policy_packets_per_min());
-        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_AVG ) {
-            set_policy_packets_avg(cmd->value);
-            printf("Am primit POLICY PACKETS_AVG %d\n", get_policy_packets_avg());
+        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_MAXLEN ) {
+            set_policy_packets_maxlen(cmd->value);
+            printf("Am primit POLICY PACKETS_MAXLEN %d\n", get_policy_packets_maxlen());
 	}
 
         cmd = atlas_cmd_batch_get(cmd_batch, cmd);
