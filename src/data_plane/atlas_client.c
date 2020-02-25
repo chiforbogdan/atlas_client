@@ -23,6 +23,7 @@ int payload_samples = 0, payload_total = 0, payload_avg = 0;
 struct registration{
     char* username;
     char* clientid;
+    uint16_t qos;
     uint16_t packets_per_min;
     uint16_t packets_maxlen;
 }client;
@@ -78,6 +79,10 @@ static void send_registration_command()
     /* Add client_id */
     atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID, strlen(client.clientid),
                         (uint8_t *)client.clientid);
+                        
+    /* Add policy qos */
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_POLICY_QOS, 
+                        sizeof(client.qos), (uint8_t *)&client.qos);
     
     /* Add policy packets per minute */
     atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE,
@@ -91,7 +96,7 @@ static void send_registration_command()
     
     cmd_batch_outer = atlas_cmd_batch_new();
 
-    /* Add inner command: username, client id, packets per minute, packets average length */
+    /* Add inner command: username, client id, qos, packets per minute, packets max length */
     atlas_cmd_batch_add(cmd_batch_outer, ATLAS_CMD_DATA_PLANE_POLICY, cmd_inner_len, cmd_buf_inner);
     atlas_cmd_batch_get_buf(cmd_batch_outer, &cmd_buf_outer, &cmd_outer_len);
     
@@ -176,10 +181,11 @@ void atlas_pkt_received(int payload)
     pthread_mutex_unlock(&mutex);
 }
 
-void atlas_init( char* user, char* client_id, uint16_t ppm, uint16_t pack_maxlen)
+void atlas_init( char* user, char* client_id, uint16_t qos, uint16_t ppm, uint16_t pack_maxlen)
 {
     client.username = strdup(user);
     client.clientid = strdup(client_id);
+    client.qos = qos;
     client.packets_per_min = ppm; 
     client.packets_maxlen = pack_maxlen; 
 

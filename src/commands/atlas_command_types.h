@@ -72,6 +72,10 @@ typedef enum _atlas_cmd_type
     /* Telemetry alert threshold value: payload is a string indicating the threshold
     value. This string will be parsed by each telemetry feature (application specific) */
     ATLAS_CMD_TELEMETRY_ALERT_THRESHOLD,
+    
+    ATLAS_CMD_TELEMETRY_PACKETS_PER_MINUTE,
+    
+    ATLAS_CMD_TELEMETRY_PACKETS_AVG,
 
 
     /* Command types shared with the data plane agent */
@@ -86,6 +90,9 @@ typedef enum _atlas_cmd_type
     
     /* ClientID command: payload is the client id */
     ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID,
+    
+     /* Policy command: payload is the policy qos value */
+    ATLAS_CMD_DATA_PLANE_POLICY_QOS,
     
     /* Policy command: payload is the policy packets_per_minute value */
     ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE,

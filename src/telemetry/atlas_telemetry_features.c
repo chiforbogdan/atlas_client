@@ -2,6 +2,8 @@
 #include "atlas_telemetry_hostname.h"
 #include "atlas_telemetry_kern_info.h"
 #include "atlas_telemetry_sysinfo.h"
+#include "atlas_telemetry_packets_info.h"
+
 
 void
 atlas_telemetry_features_init()
@@ -16,4 +18,7 @@ atlas_telemetry_features_init()
 
     /* Add sysinfo feature */
     atlas_telemetry_add_sysinfo();
+    
+    /*Add packets_info feature */
+    atlas_telemetry_add_packets_info();
 }

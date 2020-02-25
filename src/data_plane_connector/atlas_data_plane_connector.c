@@ -16,7 +16,7 @@
 #include "../coap/atlas_coap_response.h"
 #include "../alarm/atlas_alarm.h"
 #include "../utils/atlas_utils.h"
-#include "received_commands.h"
+#include "atlas_data_plane_connector.h"
 
 #define ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN (2048)
 #define ATLAS_CLIENT_POLICY_TIMEOUT_MS  (5000)
@@ -28,8 +28,11 @@ static int cl = -1;
 
 static uint8_t* username;
 static uint8_t* clientid;
+static uint16_t policy_qos;
 static uint16_t policy_packets_per_min;
 static uint16_t policy_packets_maxlen;
+static uint16_t packets_per_min = 0;
+static uint16_t packets_avg = 0;
 
 static void send_policy_command();
 static void policy_alarm_callback();
@@ -41,17 +44,30 @@ static void set_username(const uint8_t *user){
 static void set_clientid(const uint8_t *id){
     clientid = (uint8_t *)id;
 }
+static void set_policy_qos(const uint8_t* qos){
+    policy_qos = qos[0];
+}
 static void set_policy_packets_per_min(const uint8_t* ppm){
     policy_packets_per_min = ppm[0];
 }
 static void set_policy_packets_maxlen(const uint8_t* pack_maxlen){
     policy_packets_maxlen= pack_maxlen[0];
 }
+static void set_packets_per_min(const uint8_t* ppm){
+    packets_per_min= ppm[0];
+}
+static void set_packets_avg(const uint8_t* pack_avg){
+    packets_avg= pack_avg[0];
+}
+
 static uint8_t* get_username(){
     return username;
 }
 static uint8_t* get_clientid(){
     return clientid;
+}
+static uint16_t get_policy_qos(){
+    return policy_qos;
 }
 static uint16_t get_policy_packets_per_min(){
     return policy_packets_per_min;
@@ -59,6 +75,13 @@ static uint16_t get_policy_packets_per_min(){
 static uint16_t get_policy_packets_maxlen(){
     return policy_packets_maxlen;
 }
+uint16_t get_packets_per_min(){
+    return packets_per_min;
+}
+uint16_t get_packets_avg(){
+    return packets_avg;
+}
+
 
 static void
 policy_alarm_callback()
@@ -105,6 +128,11 @@ send_policy_command()
 
     /* Add MQTT clientID */
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID, strlen((char*)username), username);
+    
+     /* Add policy qos value */
+    tmp = htons(policy_qos);
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_QOS,
+                        sizeof(policy_qos), (uint8_t *) &tmp);
 
     /* Add policy packets per minute value */
     tmp = htons(policy_packets_per_min);
@@ -157,6 +185,9 @@ atlas_data_plane_parse_policy(const uint8_t *buf, uint16_t buf_len)
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID) {
             set_clientid(cmd->value);
             printf("Am primit CLIENTID %s \n", get_clientid());
+        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_QOS ) {
+            set_policy_qos(cmd->value);
+            printf("Am primit POLICY QOS %d \n", get_policy_qos());
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE ) {
             set_policy_packets_per_min(cmd->value);
             printf("Am primit POLICY PACKETS_PER_MINUTE %d \n", get_policy_packets_per_min());
@@ -201,11 +232,14 @@ atlas_data_plane_read_cb(int fd)
     while (cmd) {
         if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY) {
             atlas_data_plane_parse_policy(cmd->value, cmd->length);
-	    printf("Am primit policy\n");
+            printf("Am primit policy\n");
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE ) {
-            printf("Am primit PACKETS_PER_MINUTE\n");
+            set_packets_per_min(cmd->value);
+            printf("Am primit PACKETS_PER_MINUTE %d \n", get_packets_per_min());
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_AVG ) {
-            printf("Am primit PACKETS_AVG\n");
+            set_packets_avg(cmd->value);
+            printf("Am primit PACKETS_AVG %d \n", get_packets_avg());
+
         }
 
         cmd = atlas_cmd_batch_get(cmd_batch, cmd);
@@ -269,7 +303,7 @@ listen_socket()
 }
 
 atlas_status_t
-atlas_receive_commands_start()
+atlas_data_plane_connector_start()
 {
     atlas_status_t status;
     

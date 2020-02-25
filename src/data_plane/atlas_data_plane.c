@@ -8,8 +8,7 @@
 #include "../logger/atlas_logger.h"
 
 
-#define CLIENTID "client"
-#define QOS 1
+
 #define TIMEOUT 1000L
 
 volatile MQTTClient_deliveryToken deliveredtoken;
@@ -17,6 +16,9 @@ volatile MQTTClient clientMQTT;
 MQTTClient_deliveryToken token = 0;
 MQTTClient_message pubmsg = MQTTClient_message_initializer;
 MQTTClient atlasMQTTclient;
+
+char* clientid;
+uint16_t qos, ppm, maxlen;
 
 typedef struct publish_struct{
     char* feature;
@@ -43,7 +45,7 @@ void* publish(void* args){
 
 	    sprintf(buff, "atlas/%s", ((publish_struct_t*)args)->feature);
 
-        pubmsg.qos = QOS;
+        pubmsg.qos = qos;
         pubmsg.retained = 0;
         pubmsg.payload = publish_msg;
         pubmsg.payloadlen = strlen(publish_msg);
@@ -62,9 +64,9 @@ void subscribe(MQTTClient client, char* topic){
 
 	char buff[256];
 	sprintf(buff, "atlas/%s", topic);
-	MQTTClient_subscribe(client, buff, QOS);
+	MQTTClient_subscribe(client, buff, qos);
 
-	sprintf(buff, "Subscribing to topic atlas/%s for client %s using QOS %d\n", topic, CLIENTID, QOS);
+	sprintf(buff, "Subscribing to topic atlas/%s for client %s using QOS %d\n", topic, clientid, qos);
 	ATLAS_LOGGER_DEBUG(buff);
  	
 }
@@ -99,7 +101,7 @@ MQTTClient start_MQTTclient(char *topics, char* serverURI){
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
     int rc;
 
-    if(MQTTClient_create(&client, serverURI, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL) 
+    if(MQTTClient_create(&client, serverURI, clientid, MQTTCLIENT_PERSISTENCE_NONE, NULL) 
 		!= MQTTCLIENT_SUCCESS){
         ATLAS_LOGGER_ERROR("Failed to create MQTTclient.");
     }
@@ -126,7 +128,14 @@ MQTTClient start_MQTTclient(char *topics, char* serverURI){
 }
 
 int verify_arguments(int argc, char** argv){
-    if(!(argc < 7 || strcmp(argv[1], "--publish") || strcmp(argv[3], "--subscribe") || strcmp(argv[5], "--serverURI")))
+    if(!(argc < 15 || strcmp(argv[1], "--publish") 
+                    || strcmp(argv[3], "--subscribe") 
+                    || strcmp(argv[5], "--serverURI")
+                    || strcmp(argv[7], "--clientid")
+                    || strcmp(argv[9], "--qos")
+                    || strcmp(argv[11], "--ppm")
+                    || strcmp(argv[13], "--maxlen")
+                    ))
         return 1; 
     return 0;
 } 
@@ -157,7 +166,8 @@ static void traffic_generator(MQTTClient atlasMQTTclient, char* str){
 
 static void print_usage()
 {
-    printf("Usage: ./data_plane --publish \"feature1:X1:Y1:Z1, feature2:X2:Y2:Z2\" --subscribe \"feature1, feature2\" --serverURI protocol://host:port\n");
+    printf("Usage: ./data_plane --publish \"feature1:X1:Y1:Z1, feature2:X2:Y2:Z2\" --subscribe \"feature1, feature2\" --serverURI protocol://host:port --clientid <clientid> --qos <qos> --ppm <ppm> --maxlen <maxlen>\n");
+
 }
 
 
@@ -165,7 +175,12 @@ int main(int argc, char *argv[])
 {
     
         if(verify_arguments(argc, argv)){
-            atlas_init( "username", "clientid", 10, 50);
+            
+            clientid = strdup(argv[8]);
+            qos = atoi(argv[10]);
+            ppm = atoi(argv[12]);
+            maxlen = atoi(argv[14]);
+            atlas_init( "username", clientid, qos, ppm, maxlen);
         
             /* start MQTT client */
             atlasMQTTclient = start_MQTTclient(argv[4], argv[6]);
