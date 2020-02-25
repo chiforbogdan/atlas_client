@@ -4,7 +4,6 @@
 #include "atlas_telemetry_sysinfo.h"
 #include "atlas_telemetry_packets_info.h"
 
-
 void
 atlas_telemetry_features_init()
 {
