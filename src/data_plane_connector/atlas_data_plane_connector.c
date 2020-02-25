@@ -26,8 +26,8 @@ static struct sockaddr_un addr;
 static int fd = -1;
 static int cl = -1;
 
-static uint8_t* username;
-static uint8_t* clientid;
+static char *username;
+static char *clientid;
 static uint16_t policy_qos;
 static uint16_t policy_packets_per_min;
 static uint16_t policy_packets_maxlen;
@@ -38,32 +38,53 @@ static void send_policy_command();
 static void policy_alarm_callback();
 static void policy_callback(const char *uri, atlas_coap_response_t resp_status, const uint8_t *resp_payload, size_t resp_payload_len);
 
-static void set_username(const uint8_t *user){
-    username = (uint8_t *)user;
+static void set_username(const uint8_t *user, uint16_t length)
+{
+    if (username)
+        free(username);
+
+    username = (char *) malloc(length + 1);
+    memcpy(username, user, length);
+    username[length] = 0;
 }
-static void set_clientid(const uint8_t *id){
-    clientid = (uint8_t *)id;
+
+static void set_clientid(const uint8_t *id, uint16_t length)
+{
+    if (clientid)
+        free(clientid);
+
+    clientid = (char *) malloc(length + 1);
+    memcpy(clientid, id, length);
+    clientid[length] = 0;
 }
-static void set_policy_qos(const uint8_t* qos){
-    policy_qos = qos[0];
+
+static void set_policy_qos(const uint8_t* qos)
+{
+    memcpy(&policy_qos, qos, sizeof(policy_qos));
 }
-static void set_policy_packets_per_min(const uint8_t* ppm){
-    policy_packets_per_min = ppm[0];
+
+static void set_policy_packets_per_min(const uint8_t* ppm)
+{
+    memcpy(&policy_packets_per_min, ppm, sizeof(policy_packets_per_min));
 }
-static void set_policy_packets_maxlen(const uint8_t* pack_maxlen){
-    policy_packets_maxlen= pack_maxlen[0];
+
+static void set_policy_packets_maxlen(const uint8_t* pack_maxlen)
+{
+    memcpy(&policy_packets_maxlen, pack_maxlen, sizeof(policy_packets_maxlen));
 }
+
 static void set_packets_per_min(const uint8_t* ppm){
     packets_per_min= ppm[0];
 }
+
 static void set_packets_avg(const uint8_t* pack_avg){
     packets_avg= pack_avg[0];
 }
 
-static uint8_t* get_username(){
+static char* get_username(){
     return username;
 }
-static uint8_t* get_clientid(){
+static char* get_clientid(){
     return clientid;
 }
 static uint16_t get_policy_qos(){
@@ -124,10 +145,15 @@ send_policy_command()
 
     char uri[ATLAS_URI_MAX_LEN] = { 0 };
 
+    if (!clientid) {
+        ATLAS_LOGGER_DEBUG("Clientid value is null, thus the firewall policy cannot be sent to gateway");
+        return;
+    }
+
     cmd_batch = atlas_cmd_batch_new();
 
     /* Add MQTT clientID */
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID, strlen((char*)username), username);
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID, strlen(clientid), (uint8_t*) clientid);
     
      /* Add policy qos value */
     tmp = htons(policy_qos);
@@ -150,6 +176,9 @@ send_policy_command()
     status = atlas_coap_client_request(uri, ATLAS_COAP_METHOD_PUT,
                                        cmd_buf, cmd_len, ATLAS_CLIENT_POLICY_TIMEOUT_MS,
                                        policy_callback);
+
+    printf("Policy was sent to %s\n", uri);
+
     if (status != ATLAS_OK)
         ATLAS_LOGGER_ERROR("Error when sending policy request");
 
@@ -180,10 +209,10 @@ atlas_data_plane_parse_policy(const uint8_t *buf, uint16_t buf_len)
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
     while (cmd) {
         if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_USERNAME) {
-            set_username(cmd->value);
+            set_username(cmd->value, cmd->length);
             printf("Am primit USERNAME %s\n", get_username());
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID) {
-            set_clientid(cmd->value);
+            set_clientid(cmd->value, cmd->length);
             printf("Am primit CLIENTID %s \n", get_clientid());
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_QOS ) {
             set_policy_qos(cmd->value);
