@@ -79,24 +79,8 @@ static void set_packets_per_min(const uint8_t* ppm){
 
 static void set_packets_avg(const uint8_t* pack_avg){
     memcpy(&packets_avg, pack_avg, sizeof(packets_avg));
-    //packets_avg= pack_avg[0];
 }
 
-static char* get_username(){
-    return username;
-}
-static char* get_clientid(){
-    return clientid;
-}
-static uint16_t get_policy_qos(){
-    return policy_qos;
-}
-static uint16_t get_policy_packets_per_min(){
-    return policy_packets_per_min;
-}
-static uint16_t get_policy_packets_maxlen(){
-    return policy_packets_maxlen;
-}
 uint16_t get_packets_per_min(){
     return packets_per_min;
 }
@@ -109,7 +93,6 @@ static void
 policy_alarm_callback()
 {
     ATLAS_LOGGER_INFO("Policy alarm callback");
-    printf("Policy alarm callback\n");
     send_policy_command();
 }
 
@@ -118,12 +101,9 @@ policy_callback(const char *uri, atlas_coap_response_t resp_status,
          const uint8_t *resp_payload, size_t resp_payload_len)
 {
     ATLAS_LOGGER_DEBUG("Policy callback executed");
-    printf("Policy callback executed\n");
 
     if (resp_status != ATLAS_COAP_RESP_OK) {
         ATLAS_LOGGER_ERROR("Error in sending the policy values");
-        printf("Error in sending the policy values\n");
-        
         
         /* Start sending policy timer */
         if (atlas_alarm_set(ATLAS_CLIENT_POLICY_TIMEOUT_MS, policy_alarm_callback, ATLAS_ALARM_RUN_ONCE) < 0)
@@ -211,19 +191,14 @@ atlas_data_plane_parse_policy(const uint8_t *buf, uint16_t buf_len)
     while (cmd) {
         if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_USERNAME) {
             set_username(cmd->value, cmd->length);
-            printf("Am primit USERNAME %s\n", get_username());
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID) {
             set_clientid(cmd->value, cmd->length);
-            printf("Am primit CLIENTID %s \n", get_clientid());
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_QOS ) {
             set_policy_qos(cmd->value);
-            printf("Am primit POLICY QOS %d \n", get_policy_qos());
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE ) {
             set_policy_packets_per_min(cmd->value);
-            printf("Am primit POLICY PACKETS_PER_MINUTE %d \n", get_policy_packets_per_min());
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_MAXLEN ) {
             set_policy_packets_maxlen(cmd->value);
-            printf("Am primit POLICY PACKETS_MAXLEN %d\n", get_policy_packets_maxlen());
 	}
 
         cmd = atlas_cmd_batch_get(cmd_batch, cmd);
@@ -262,13 +237,10 @@ atlas_data_plane_read_cb(int fd)
     while (cmd) {
         if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY) {
             atlas_data_plane_parse_policy(cmd->value, cmd->length);
-            printf("Am primit policy\n");
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE ) {
             set_packets_per_min(cmd->value);
-            printf("Am primit PACKETS_PER_MINUTE %d \n", get_packets_per_min());
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_AVG ) {
             set_packets_avg(cmd->value);
-            printf("Am primit PACKETS_AVG %d \n", get_packets_avg());
 
         }
 

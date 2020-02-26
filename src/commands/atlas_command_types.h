@@ -57,7 +57,7 @@ typedef enum _atlas_cmd_type
     /* Telemetry sysinfo load 5 command: payload is 5 minutes load average */
     ATLAS_CMD_TELEMETRY_SYSINFO_LOAD5,
 
-   /* Telemetry sysinfo load 15 command: payload is 15 minutes load average */
+    /* Telemetry sysinfo load 15 command: payload is 15 minutes load average */
     ATLAS_CMD_TELEMETRY_SYSINFO_LOAD15,
 
     /* Telemetry alert external push rate: payload is a number of seconds indicating
@@ -73,8 +73,10 @@ typedef enum _atlas_cmd_type
     value. This string will be parsed by each telemetry feature (application specific) */
     ATLAS_CMD_TELEMETRY_ALERT_THRESHOLD,
     
+    /* Telemetry packets per minute command: payload is the number of packets received in 1 minute */
     ATLAS_CMD_TELEMETRY_PACKETS_PER_MINUTE,
     
+    /* Telemetry packets average command: payload is the average length of received packets in 1 minute */
     ATLAS_CMD_TELEMETRY_PACKETS_AVG,
 
 

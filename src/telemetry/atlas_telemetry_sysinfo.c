@@ -30,6 +30,7 @@
 #define ATLAS_SYSINFO_LOAD5_PATH "gateway/telemetry/sysinfo/load5"
 #define ATLAS_SYSINFO_LOAD15_PATH "gateway/telemetry/sysinfo/load15"
 
+
 static uint16_t procs_threshold;
 
 static void
@@ -317,7 +318,6 @@ atlas_telemetry_payload_procs(uint8_t **payload, uint16_t *payload_len,
     char procs[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
 
     ATLAS_LOGGER_INFO("Get payload for sysinfo procs telemetry feature");
-
     if (sysinfo(&info) != 0) {
         ATLAS_LOGGER_ERROR("Error in getting sysinfo procs");
         return;
@@ -553,8 +553,8 @@ atlas_push_alert_procs_cb(const char *uri_path, const uint8_t *req_payload, size
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_DEBUG("Telemetry sysinfo procs push alert end-point encountered an error when parsing the command");
         return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
-    }
-
+    }  
+ 
     atlas_cfg_coap_get_uri(ATLAS_SYSINFO_PROCS_PATH, uri);
     atlas_telemetry_push_set(uri, push_rate);
  
