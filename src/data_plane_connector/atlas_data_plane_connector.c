@@ -34,7 +34,6 @@ static uint16_t policy_packets_maxlen;
 static uint16_t packets_per_min = 0;
 static uint16_t packets_avg = 0;
 
-static void send_policy_command();
 static void policy_alarm_callback();
 static void policy_callback(const char *uri, atlas_coap_response_t resp_status, const uint8_t *resp_payload, size_t resp_payload_len);
 
@@ -115,7 +114,7 @@ policy_callback(const char *uri, atlas_coap_response_t resp_status,
     ATLAS_LOGGER_INFO("Sending policy to gateway is COMPLETED!");
 }
 
-static void
+void
 send_policy_command()
 {
     atlas_cmd_batch_t *cmd_batch;
@@ -158,7 +157,6 @@ send_policy_command()
                                        cmd_buf, cmd_len, ATLAS_CLIENT_POLICY_TIMEOUT_MS,
                                        policy_callback);
 
-    printf("Policy was sent to %s\n", uri);
 
     if (status != ATLAS_OK)
         ATLAS_LOGGER_ERROR("Error when sending policy request");

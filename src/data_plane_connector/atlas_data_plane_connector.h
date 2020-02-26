@@ -8,7 +8,7 @@
 atlas_status_t atlas_data_plane_connector_start();
 uint16_t get_packets_per_min();
 uint16_t get_packets_avg();
-
+void send_policy_command();
 
 
 #endif /* __ATLAS_DATA_PLANE_CONNECTOR_H__ */
