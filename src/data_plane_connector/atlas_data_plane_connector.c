@@ -74,11 +74,12 @@ static void set_policy_packets_maxlen(const uint8_t* pack_maxlen)
 }
 
 static void set_packets_per_min(const uint8_t* ppm){
-    packets_per_min= ppm[0];
+    memcpy(&packets_per_min, ppm, sizeof(packets_per_min));
 }
 
 static void set_packets_avg(const uint8_t* pack_avg){
-    packets_avg= pack_avg[0];
+    memcpy(&packets_avg, pack_avg, sizeof(packets_avg));
+    //packets_avg= pack_avg[0];
 }
 
 static char* get_username(){

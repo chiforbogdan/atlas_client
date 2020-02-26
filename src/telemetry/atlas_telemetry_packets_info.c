@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
+#include <limits.h>
+#include <errno.h>
 #include "../logger/atlas_logger.h"
 #include "../commands/atlas_command.h"
 #include "../commands/atlas_command_types.h"
@@ -18,6 +20,8 @@
 #define ATLAS_PACKETS_INFO_PACKETS_PER_MINUTE "gateway/telemetry/packets_info/packets_per_minute"
 #define ATLAS_PACKETS_INFO_PACKETS_AVG "gateway/telemetry/packets_info/packets_avg"
 
+static uint16_t procs_threshold;
+
 static void
 atlas_telemetry_payload_packets_per_minute(uint8_t **payload, uint16_t *payload_len,
                                uint8_t use_threshold)
@@ -29,6 +33,7 @@ atlas_telemetry_payload_packets_per_minute(uint8_t **payload, uint16_t *payload_
     uint16_t ppm;
 
     ATLAS_LOGGER_INFO("Get payload for packets_per_minute telemetry feature");
+    printf("Get payload for ppm telemetry feature********\n");
 
     if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
         ATLAS_LOGGER_ERROR("Packets_per_minute telemetry feature does not support thresholds");
@@ -53,6 +58,69 @@ atlas_telemetry_payload_packets_per_minute(uint8_t **payload, uint16_t *payload_
 
     atlas_cmd_batch_free(cmd_batch);
 }
+
+static atlas_coap_response_t
+atlas_threshold_alert_ppm_cb(const char *uri_path, const uint8_t *req_payload, size_t req_payload_len,
+                               uint8_t **resp_payload, size_t *resp_payload_len)
+{
+    atlas_status_t status;
+    uint16_t scan_rate;
+    char *threshold = NULL;
+    char uri[ATLAS_URI_MAX_LEN] = { 0 };
+
+    ATLAS_LOGGER_DEBUG("Telemetry ppm threshold alert end-point called");
+    printf("Telemetry PPM treshhold alert end-point called**********\n");
+
+
+    status = atlas_alert_threshold_cmd_parse(req_payload, req_payload_len, &scan_rate,
+                                             &threshold);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Telemetry sysinfo threshold alert end-point encountered an error when parsing the command");
+        return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
+    }
+
+    errno = 0;
+    procs_threshold = strtol(threshold, NULL, 10);
+
+    free(threshold);
+   
+    /* Check for various possible errors */
+    if ((errno == ERANGE && (procs_threshold == LONG_MAX || procs_threshold == LONG_MIN))
+            || (errno != 0 && procs_threshold == 0)) {
+        ATLAS_LOGGER_ERROR("Telemetry sysinfo threshold alert end-point encountered an error when parsing the threshold value");
+        return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
+    }
+
+    atlas_cfg_coap_get_uri(ATLAS_PACKETS_INFO_PACKETS_PER_MINUTE, uri);
+    atlas_telemetry_threshold_set(uri, scan_rate);
+
+    return ATLAS_COAP_RESP_OK;
+}
+
+static atlas_coap_response_t
+atlas_push_alert_ppm_cb(const char *uri_path, const uint8_t *req_payload, size_t req_payload_len,
+                          uint8_t **resp_payload, size_t *resp_payload_len)
+{
+    atlas_status_t status;
+    uint16_t push_rate;
+    char uri[ATLAS_URI_MAX_LEN] = { 0 };
+
+    ATLAS_LOGGER_DEBUG("Telemetry ppm push alert end-point called");
+    printf("Telemetry ppm push alert end-point called*******************\n");
+
+    status = atlas_alert_push_cmd_parse(req_payload, req_payload_len, &push_rate);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_DEBUG("Telemetry ppm push alert end-point encountered an error when parsing the command");
+        printf("Telemetry ppm push alert end-point encountered an error when parsing the command*********************");
+        return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
+    }
+
+    atlas_cfg_coap_get_uri(ATLAS_PACKETS_INFO_PACKETS_PER_MINUTE, uri);
+    atlas_telemetry_push_set(uri, push_rate);
+ 
+    return ATLAS_COAP_RESP_OK;
+}
+
 
 static void
 atlas_telemetry_payload_packets_avg(uint8_t **payload, uint16_t *payload_len,
@@ -93,6 +161,7 @@ atlas_telemetry_payload_packets_avg(uint8_t **payload, uint16_t *payload_len,
 void 
 atlas_telemetry_add_packets_info(){
     
+    atlas_status_t status;
     char uri[ATLAS_URI_MAX_LEN] = { 0 };
 
     ATLAS_LOGGER_DEBUG("Add packets_info telemetry feature");
@@ -103,4 +172,21 @@ atlas_telemetry_add_packets_info(){
     
     atlas_cfg_coap_get_uri(ATLAS_PACKETS_INFO_PACKETS_AVG, uri);
     atlas_telemetry_add(uri, atlas_telemetry_payload_packets_avg);
+
+    /* Add ppm alerts */
+    status = atlas_coap_server_add_resource("client/telemetry/packets_info/packets_per_min/alerts/push", ATLAS_COAP_METHOD_PUT,
+                                            atlas_push_alert_ppm_cb);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Cannot install ppm push telemetry alert end-point");
+printf("Cannot install ppm push telemetry alert end-point**********\n");
+        return;
+    }
+    
+    /* Add ppm threshold alerts */
+    status = atlas_coap_server_add_resource("client/telemetry/packets_info/packets_per_min/alerts/threshold", ATLAS_COAP_METHOD_PUT,
+                                            atlas_threshold_alert_ppm_cb);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Cannot install sysinfo procs threshold telemetry alert end-point");
+        return;
+    }
 }

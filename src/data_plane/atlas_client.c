@@ -11,7 +11,7 @@
 #include "../utils/atlas_utils.h"
 #include "MQTTClient.h"
 
-#define SLEEPTIME 5
+#define SLEEPTIME 60
 
 int fd;
 struct sockaddr_un addr;
