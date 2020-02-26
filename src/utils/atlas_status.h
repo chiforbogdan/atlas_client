@@ -15,6 +15,7 @@ typedef enum _atlas_status {
     ATLAS_PSK_FILE_ERROR,
     ATLAS_INVALID_INPUT,
     ATLAS_CORRUPTED_COMMAND,
+    ATLAS_SOCKET_ERROR,
 } atlas_status_t ;
 
 #endif /* __ATLAS_STATUS_H__ */

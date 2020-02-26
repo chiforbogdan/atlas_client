@@ -84,7 +84,7 @@ atlas_cmd_batch_set_raw(atlas_cmd_batch_t *cmd_batch, const uint8_t *buf, uint16
         
         p += sizeof(uint16_t);
         tmp_len -= sizeof(uint16_t);
-
+    
         /* Validate length */
         if (tmp_len < sizeof(uint16_t))
             return ATLAS_CORRUPTED_COMMAND;
@@ -97,6 +97,7 @@ atlas_cmd_batch_set_raw(atlas_cmd_batch_t *cmd_batch, const uint8_t *buf, uint16
         /* Validate value */
         if (tmp_len < cmd_len)
             return ATLAS_CORRUPTED_COMMAND;
+        
 
         p += cmd_len;
         tmp_len -= cmd_len; 

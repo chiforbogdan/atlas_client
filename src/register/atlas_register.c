@@ -9,6 +9,7 @@
 #include "../alarm/atlas_alarm.h"
 #include "../telemetry/atlas_telemetry.h"
 #include "../utils/atlas_config.h"
+#include "../data_plane_connector/atlas_data_plane_connector.h"
 
 #define ATLAS_CLIENT_REGISTER_TIMEOUT_MS  (5000)
 #define ATLAS_CLIENT_KEEPALIVE_TIMEOUT_MS (20000)
@@ -125,6 +126,9 @@ reg_callback(const char *uri, atlas_coap_response_t resp_status,
     }
 
     ATLAS_LOGGER_INFO("Registration to gateway is COMPLETED!");
+    
+    if (registered == ATLAS_CLIENT_NOT_REGISTERED)
+        send_policy_command();
 
     registered = ATLAS_CLIENT_REGISTERED;
 

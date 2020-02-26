@@ -11,6 +11,7 @@
 #include "register/atlas_register.h"
 #include "telemetry/atlas_telemetry_features.h"
 #include "utils/atlas_config.h"
+#include "data_plane_connector/atlas_data_plane_connector.h"
 
 static void
 print_usage()
@@ -109,7 +110,13 @@ main(int argc, char **argv)
     }
 
     ATLAS_LOGGER_INFO("CoAP server started");
-    
+
+    /* Init commands receiver modules */
+    if (atlas_data_plane_connector_start() != ATLAS_OK) {
+        ATLAS_LOGGER_INFO("Cannot start receive commands module (data plane agent)");
+	return -1;
+    }
+   
     /* Init telemetry features */
     atlas_telemetry_features_init();
 

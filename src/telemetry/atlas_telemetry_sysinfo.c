@@ -11,10 +11,25 @@
 #include "../commands/atlas_command_types.h"
 #include "../identity/atlas_identity.h"
 #include "../coap/atlas_coap_server.h"
+#include "../utils/atlas_config.h"
 #include "atlas_telemetry.h"
 #include "atlas_alert_utils.h"
 
 #define ATLAS_SYSINFO_FEATURE_MAX_LEN (32)
+#define ATLAS_SYSINFO_UPTIME_PATH "gateway/telemetry/sysinfo/uptime"
+#define ATLAS_SYSINFO_TOTALRAM_PATH "gateway/telemetry/sysinfo/totalram"
+#define ATLAS_SYSINFO_FREERAM_PATH "gateway/telemetry/sysinfo/freeram"
+#define ATLAS_SYSINFO_SHAREDRAM_PATH "gateway/telemetry/sysinfo/sharedram"
+#define ATLAS_SYSINFO_BUFFERRAM_PATH "gateway/telemetry/sysinfo/bufferram"
+#define ATLAS_SYSINFO_TOTALSWAP_PATH "gateway/telemetry/sysinfo/totalswap"
+#define ATLAS_SYSINFO_FREESWAP_PATH "gateway/telemetry/sysinfo/freeswap"
+#define ATLAS_SYSINFO_PROCS_PATH "gateway/telemetry/sysinfo/procs"
+#define ATLAS_SYSINFO_TOTALHIGH_PATH "gateway/telemetry/sysinfo/totalhigh"
+#define ATLAS_SYSINFO_FREEHIGH_PATH "gateway/telemetry/sysinfo/freehigh"
+#define ATLAS_SYSINFO_LOAD1_PATH "gateway/telemetry/sysinfo/load1"
+#define ATLAS_SYSINFO_LOAD5_PATH "gateway/telemetry/sysinfo/load5"
+#define ATLAS_SYSINFO_LOAD15_PATH "gateway/telemetry/sysinfo/load15"
+
 
 static uint16_t procs_threshold;
 
@@ -303,7 +318,6 @@ atlas_telemetry_payload_procs(uint8_t **payload, uint16_t *payload_len,
     char procs[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
 
     ATLAS_LOGGER_INFO("Get payload for sysinfo procs telemetry feature");
-
     if (sysinfo(&info) != 0) {
         ATLAS_LOGGER_ERROR("Error in getting sysinfo procs");
         return;
@@ -531,6 +545,7 @@ atlas_push_alert_procs_cb(const char *uri_path, const uint8_t *req_payload, size
 {
     atlas_status_t status;
     uint16_t push_rate;
+    char uri[ATLAS_URI_MAX_LEN] = { 0 };
 
     ATLAS_LOGGER_DEBUG("Telemetry sysinfo procs push alert end-point called");
 
@@ -538,9 +553,10 @@ atlas_push_alert_procs_cb(const char *uri_path, const uint8_t *req_payload, size
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_DEBUG("Telemetry sysinfo procs push alert end-point encountered an error when parsing the command");
         return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
-    }
-
-    atlas_telemetry_push_set("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/procs", push_rate);
+    }  
+ 
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_PROCS_PATH, uri);
+    atlas_telemetry_push_set(uri, push_rate);
  
     return ATLAS_COAP_RESP_OK;
 }
@@ -551,6 +567,7 @@ atlas_push_alert_uptime_cb(const char *uri_path, const uint8_t *req_payload, siz
 {
     atlas_status_t status;
     uint16_t push_rate;
+    char uri[ATLAS_URI_MAX_LEN] = { 0 };
 
     ATLAS_LOGGER_DEBUG("Telemetry sysinfo uptime push alert end-point called");
 
@@ -560,7 +577,8 @@ atlas_push_alert_uptime_cb(const char *uri_path, const uint8_t *req_payload, siz
         return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
     }
 
-    atlas_telemetry_push_set("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/uptime", push_rate);
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_UPTIME_PATH, uri);
+    atlas_telemetry_push_set(uri, push_rate);
  
     return ATLAS_COAP_RESP_OK;
 }
@@ -572,6 +590,7 @@ atlas_threshold_alert_procs_cb(const char *uri_path, const uint8_t *req_payload,
     atlas_status_t status;
     uint16_t scan_rate;
     char *threshold = NULL;
+    char uri[ATLAS_URI_MAX_LEN] = { 0 };
 
     ATLAS_LOGGER_DEBUG("Telemetry sysinfo threshold alert end-point called");
 
@@ -594,7 +613,8 @@ atlas_threshold_alert_procs_cb(const char *uri_path, const uint8_t *req_payload,
         return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
     }
 
-    atlas_telemetry_threshold_set("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/procs", scan_rate);
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_PROCS_PATH, uri);
+    atlas_telemetry_threshold_set(uri, scan_rate);
 
     return ATLAS_COAP_RESP_OK;
 }
@@ -603,23 +623,49 @@ void
 atlas_telemetry_add_sysinfo()
 {
     atlas_status_t status;
+    char uri[ATLAS_URI_MAX_LEN] = { 0 };
 
     ATLAS_LOGGER_DEBUG("Add sysinfo telemetry feature");
 
     /* Add sysinfo telemetry features */
-    atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/uptime", atlas_telemetry_payload_uptime);
-    atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/totalram", atlas_telemetry_payload_totalram);
-    atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/freeram", atlas_telemetry_payload_freeram);
-    atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/sharedram", atlas_telemetry_payload_sharedram);
-    atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/bufferram", atlas_telemetry_payload_bufferram);
-    atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/totalswap", atlas_telemetry_payload_totalswap);
-    atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/freeswap", atlas_telemetry_payload_freeswap);
-    atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/procs", atlas_telemetry_payload_procs);
-    atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/totalhigh", atlas_telemetry_payload_totalhigh);
-    atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/freehigh", atlas_telemetry_payload_freehigh);
-    atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/load1", atlas_telemetry_payload_load1);
-    atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/load5", atlas_telemetry_payload_load5);
-    atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/sysinfo/load15", atlas_telemetry_payload_load15);
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_UPTIME_PATH, uri);
+    atlas_telemetry_add(uri, atlas_telemetry_payload_uptime);
+    
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_TOTALRAM_PATH, uri);
+    atlas_telemetry_add(uri, atlas_telemetry_payload_totalram);
+    
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_FREERAM_PATH, uri);
+    atlas_telemetry_add(uri, atlas_telemetry_payload_freeram);
+    
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_SHAREDRAM_PATH, uri);
+    atlas_telemetry_add(uri, atlas_telemetry_payload_sharedram);
+    
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_BUFFERRAM_PATH, uri);
+    atlas_telemetry_add(uri, atlas_telemetry_payload_bufferram);
+    
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_TOTALSWAP_PATH, uri);
+    atlas_telemetry_add(uri, atlas_telemetry_payload_totalswap);
+    
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_FREESWAP_PATH, uri);
+    atlas_telemetry_add(uri, atlas_telemetry_payload_freeswap);
+    
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_PROCS_PATH, uri);
+    atlas_telemetry_add(uri, atlas_telemetry_payload_procs);
+    
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_TOTALHIGH_PATH, uri);
+    atlas_telemetry_add(uri, atlas_telemetry_payload_totalhigh);
+    
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_FREEHIGH_PATH, uri);
+    atlas_telemetry_add(uri, atlas_telemetry_payload_freehigh);
+    
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_LOAD1_PATH, uri);
+    atlas_telemetry_add(uri, atlas_telemetry_payload_load1);
+    
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_LOAD5_PATH, uri);
+    atlas_telemetry_add(uri, atlas_telemetry_payload_load5);
+    
+    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_LOAD15_PATH, uri);
+    atlas_telemetry_add(uri, atlas_telemetry_payload_load15);
 
     /* Add sysinfo telemetry push alerts */
     status = atlas_coap_server_add_resource("client/telemetry/sysinfo/procs/alerts/push", ATLAS_COAP_METHOD_PUT,

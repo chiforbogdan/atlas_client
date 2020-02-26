@@ -8,9 +8,11 @@
 #include "../commands/atlas_command.h"
 #include "../commands/atlas_command_types.h"
 #include "../identity/atlas_identity.h"
+#include "../utils/atlas_config.h"
 #include "atlas_telemetry.h"
 
 #define ATLAS_KERNEL_INFO_MAX_LEN (128)
+#define ATLAS_KERNEL_INFO_PATH "gateway/telemetry/kernel_info"
 
 static void
 atlas_telemetry_payload_kern_info(uint8_t **payload, uint16_t *payload_len,
@@ -64,6 +66,9 @@ atlas_telemetry_add_kern_info()
 {
     ATLAS_LOGGER_DEBUG("Add kernel info telemetry feature");
 
-    atlas_telemetry_add("coaps://127.0.0.1:10100/gateway/telemetry/kernel_info", atlas_telemetry_payload_kern_info);
+    char uri[ATLAS_URI_MAX_LEN] = { 0 };
+
+    atlas_cfg_coap_get_uri(ATLAS_KERNEL_INFO_PATH, uri);
+    atlas_telemetry_add(uri, atlas_telemetry_payload_kern_info);
 }
 
