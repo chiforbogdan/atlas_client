@@ -35,8 +35,10 @@ static void send_statistics_command();
 static void write_to_socket(const uint8_t* buffer,uint16_t cmd_len);
 static void socket_connect();
 static void restore_payload();
+static void send_reputation_command(char *feature);
 
-static void *register_to_atlas_client(){
+static void 
+*register_to_atlas_client(){
     
     ATLAS_LOGGER_DEBUG("DP: Register to atlas_client");
 
@@ -60,7 +62,8 @@ static void *register_to_atlas_client(){
     return NULL;
 }
 
-static void send_registration_command()
+static void 
+send_registration_command()
 {
     atlas_cmd_batch_t *cmd_batch_inner;
     atlas_cmd_batch_t *cmd_batch_outer;
@@ -107,7 +110,8 @@ static void send_registration_command()
     atlas_cmd_batch_free(cmd_batch_outer);
 }
 
-static void send_statistics_command()
+static void 
+send_statistics_command()
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -131,7 +135,8 @@ static void send_statistics_command()
 
 
 
-static void socket_connect(){
+static void 
+socket_connect(){
     if ( (fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         ATLAS_LOGGER_ERROR("DP: Socket error");
     }
@@ -145,21 +150,25 @@ static void socket_connect(){
     ATLAS_LOGGER_DEBUG("DP: Socket connected");
 }
 
-static void write_to_socket(const uint8_t* cmd_buf, uint16_t cmd_len){
+static void 
+write_to_socket(const uint8_t* cmd_buf, uint16_t cmd_len){
     int n = write(fd, cmd_buf, cmd_len); 
-
+    
     while(n<0){
 	     ATLAS_LOGGER_ERROR("DP: ERROR writing to socket."); 
 	     close(fd);
 	     sleep(2);
-	    
+	     
 	     socket_connect();
 	     
 	     n = write(fd, cmd_buf, cmd_len);  
      }
+     
+     
 }	
 
-static void restore_payload(){
+static void 
+restore_payload(){
 
     pthread_mutex_lock(&mutex); 
 
@@ -169,7 +178,8 @@ static void restore_payload(){
     
 }
 
-void atlas_pkt_received(int payload)
+void 
+atlas_pkt_received(int payload)
 {
 
     pthread_mutex_lock(&mutex);
@@ -181,7 +191,43 @@ void atlas_pkt_received(int payload)
     pthread_mutex_unlock(&mutex);
 }
 
-void atlas_init( char* user, char* client_id, uint16_t qos, uint16_t ppm, uint16_t pack_maxlen)
+void
+atlas_reputation_request(char *feature)
+{
+    send_reputation_command(feature);
+}
+
+static void 
+send_reputation_command(char *feature)
+{
+    atlas_cmd_batch_t *cmd_batch;
+    uint8_t *cmd_buf = NULL;
+    uint16_t cmd_len = 0;
+    uint8_t buf[512];
+    
+    cmd_batch = atlas_cmd_batch_new();
+    
+     /* Add feature */
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_FEATURE, strlen(feature),
+                        (uint8_t *)feature);
+    
+    atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
+    printf("REQUEST REPUTATION\n");
+    write_to_socket(cmd_buf, cmd_len);
+    printf("\n");
+    
+    int r = read(fd, buf, sizeof(buf)); 
+    printf("Am primit: %s  %d\n", buf, fd);
+    while( r <= 0 ){
+        printf("Read error\n");
+        r = read(fd, buf, sizeof(buf));
+    } 
+    
+    atlas_cmd_batch_free(cmd_batch);
+}
+
+void 
+atlas_init( char* user, char* client_id, uint16_t qos, uint16_t ppm, uint16_t pack_maxlen)
 {
     client.username = strdup(user);
     client.clientid = strdup(client_id);
@@ -191,4 +237,3 @@ void atlas_init( char* user, char* client_id, uint16_t qos, uint16_t ppm, uint16
 
     pthread_create(&init_t, NULL, &register_to_atlas_client, NULL);
 }
-

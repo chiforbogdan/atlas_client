@@ -108,6 +108,8 @@ typedef enum _atlas_cmd_type
     /* Packets average command: payload is the average length of received packets*/
     ATLAS_CMD_DATA_PLANE_PACKETS_AVG,
 
+    ATLAS_CMD_DATA_PLANE_FEATURE = 1500,
+
 } atlas_cmd_type_t;
 
 #endif /* __ATLAS_COMMAND_TYPE_H__ */

@@ -181,9 +181,10 @@ int main(int argc, char *argv[])
             ppm = atoi(argv[12]);
             maxlen = atoi(argv[14]);
             atlas_init( "username", clientid, qos, ppm, maxlen);
-        
             /* start MQTT client */
             atlasMQTTclient = start_MQTTclient(argv[4], argv[6]);
+            
+            atlas_reputation_request("temp");
         
             traffic_generator(atlasMQTTclient, argv[2]);
         }  
