@@ -119,7 +119,6 @@ send_statistics_command()
     
     cmd_batch = atlas_cmd_batch_new();
     
-    
     /* Add packets per minute received*/
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE, sizeof(payload_samples), (uint8_t *)&payload_samples);
     
@@ -136,7 +135,9 @@ send_statistics_command()
 
 
 static void 
-socket_connect(){
+socket_connect()
+{
+
     if ( (fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         ATLAS_LOGGER_ERROR("DP: Socket error");
     }
@@ -151,7 +152,8 @@ socket_connect(){
 }
 
 static void 
-write_to_socket(const uint8_t* cmd_buf, uint16_t cmd_len){
+write_to_socket(const uint8_t* cmd_buf, uint16_t cmd_len)
+{
     int n = write(fd, cmd_buf, cmd_len); 
     
     while(n<0){
@@ -168,7 +170,8 @@ write_to_socket(const uint8_t* cmd_buf, uint16_t cmd_len){
 }	
 
 static void 
-restore_payload(){
+restore_payload()
+{
 
     pthread_mutex_lock(&mutex); 
 
