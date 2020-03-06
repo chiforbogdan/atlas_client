@@ -192,7 +192,7 @@ feature_callback(const char *uri, atlas_coap_response_t resp_status,
 
 atlas_status_t atlas_feature_reputation_cmd_parse(const uint8_t *buf, uint16_t buf_len)
 {
-    atlas_cmd_batch_t *cmd_batch, *cmd_batch_send;
+    atlas_cmd_batch_t *cmd_batch = NULL, *cmd_batch_send;
     const atlas_cmd_t *cmd;
     atlas_status_t status = ATLAS_OK;
     uint8_t *cmd_buf = NULL;
@@ -219,7 +219,8 @@ atlas_status_t atlas_feature_reputation_cmd_parse(const uint8_t *buf, uint16_t b
             atlas_cmd_batch_add(cmd_batch_send, ATLAS_CMD_DATA_PLANE_FEATURE, cmd->length,
                        cmd->value);
             atlas_cmd_batch_get_buf(cmd_batch_send, &cmd_buf, &cmd_len);
-            write(cl, cmd_buf, cmd_len);
+            if (write(cl, cmd_buf, cmd_len) < 0)
+                ATLAS_LOGGER_ERROR("Error writing to socket the reputation value.");
             atlas_cmd_batch_free(cmd_batch_send);
         }
 

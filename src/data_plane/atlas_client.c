@@ -222,11 +222,14 @@ send_reputation_command(char *feature)
     printf("REQUEST REPUTATION\n");
     write_to_socket(cmd_buf, cmd_len);
     
-    r = read(fd, buf, sizeof(buf)); 
-    while( r <= 0 ){
-        printf("Read error\n");
-        r = read(fd, buf, sizeof(buf));
-    } 
+    atlas_cmd_batch_free(cmd_batch);
+    
+    r = read(fd, buf, sizeof(buf));
+    if (r <= 0) {
+        ATLAS_LOGGER_ERROR("Error when reading the reputation value for requested feature");
+        return;
+    }
+
     cmd_batch = atlas_cmd_batch_new();
     
     status = atlas_cmd_batch_set_raw(cmd_batch, buf, r);
@@ -246,7 +249,6 @@ send_reputation_command(char *feature)
         }
         cmd = atlas_cmd_batch_get(cmd_batch, cmd);
     }
-
 
     atlas_cmd_batch_free(cmd_batch);
 }
