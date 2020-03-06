@@ -24,7 +24,7 @@
 #define ATLAS_CLIENT_POLICY_TIMEOUT_MS  (5000)
 #define ATLAS_CLIENT_FEATURE_TIMEOUT_MS  (5000)
 #define ATLAS_CLIENT_POLICY_COAP_PATH   "gateway/policy"
-#define ATLAS_CLIENT_FEATURE_COAP_PATH   "gateway/feature"
+#define ATLAS_CLIENT_FEATURE_COAP_PATH   "gateway/reputation/feature"
 
 static struct sockaddr_un addr;
 static int fd = -1;
@@ -35,12 +35,8 @@ static char *clientid;
 static uint16_t policy_qos;
 static uint16_t policy_packets_per_min;
 static uint16_t policy_packets_maxlen;
-static uint16_t packets_per_min = 0;
-static uint16_t packets_avg = 0;
-
-static void policy_alarm_callback();
-static void policy_callback(const char *uri, atlas_coap_response_t resp_status, const uint8_t *resp_payload, size_t resp_payload_len);
-atlas_status_t atlas_feature_reputation_cmd_parse(const uint8_t *buf, uint16_t buf_len);
+static uint16_t packets_per_min;
+static uint16_t packets_avg;
 
 static void set_username(const uint8_t *user, uint16_t length)
 {
@@ -88,10 +84,10 @@ static void set_packets_avg(const uint8_t* pack_avg){
 uint16_t get_packets_per_min(){
     return packets_per_min;
 }
+
 uint16_t get_packets_avg(){
     return packets_avg;
 }
-
 
 static void
 policy_alarm_callback()
@@ -115,8 +111,6 @@ policy_callback(const char *uri, atlas_coap_response_t resp_status,
         
         return;
     }
-
-    
 
     ATLAS_LOGGER_INFO("Sending policy to gateway is COMPLETED!");
 }
@@ -171,28 +165,10 @@ send_policy_command()
     atlas_cmd_batch_free(cmd_batch);
 }
 
-static void 
-feature_callback(const char *uri, atlas_coap_response_t resp_status,
-         const uint8_t *resp_payload, size_t resp_payload_len)
+static atlas_status_t
+atlas_reputation_resp_parse(const uint8_t *buf, uint16_t buf_len)
 {
-    ATLAS_LOGGER_DEBUG("Feature callback executed");
-    printf("Feature callback executed\n");
-
-    if (resp_status != ATLAS_COAP_RESP_OK) {
-        ATLAS_LOGGER_ERROR("Error in sending the feature request");
-        printf("Error in sending the feature request\n");
-        /* TODO: trimite eroare la data plane */
-        return;
-    }
-    atlas_feature_reputation_cmd_parse(resp_payload, resp_payload_len);
-    
-    ATLAS_LOGGER_INFO("Sending feature reputation to data plane is COMPLETED!");
-    printf("Sending feature reputation to data plane is COMPLETED!\n");
-}
-
-atlas_status_t atlas_feature_reputation_cmd_parse(const uint8_t *buf, uint16_t buf_len)
-{
-    atlas_cmd_batch_t *cmd_batch = NULL, *cmd_batch_send;
+    atlas_cmd_batch_t *cmd_batch, *cmd_batch_send;
     const atlas_cmd_t *cmd;
     atlas_status_t status = ATLAS_OK;
     uint8_t *cmd_buf = NULL;
@@ -201,14 +177,13 @@ atlas_status_t atlas_feature_reputation_cmd_parse(const uint8_t *buf, uint16_t b
     if (!buf || !buf_len)
         return ATLAS_INVALID_INPUT;
 
-
     cmd_batch = atlas_cmd_batch_new();
     
     status = atlas_cmd_batch_set_raw(cmd_batch, buf, buf_len);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Corrupted feature reputation command");
         status = ATLAS_CORRUPTED_COMMAND;
-	    goto EXIT;
+        goto EXIT;
     }
     
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
@@ -217,10 +192,13 @@ atlas_status_t atlas_feature_reputation_cmd_parse(const uint8_t *buf, uint16_t b
             cmd_batch_send = atlas_cmd_batch_new();
             /* Add feature reputation value */
             atlas_cmd_batch_add(cmd_batch_send, ATLAS_CMD_DATA_PLANE_FEATURE, cmd->length,
-                       cmd->value);
+                                cmd->value);
             atlas_cmd_batch_get_buf(cmd_batch_send, &cmd_buf, &cmd_len);
-            if (write(cl, cmd_buf, cmd_len) < 0)
+
+            /* Send reputation value to data plane */            
+            if (write(cl, cmd_buf, cmd_len) != cmd_len)
                 ATLAS_LOGGER_ERROR("Error writing to socket the reputation value.");
+            
             atlas_cmd_batch_free(cmd_batch_send);
         }
 
@@ -233,17 +211,40 @@ EXIT:
     return status;
 }
 
-void
-atlas_init_feature_command(const uint8_t *feature, uint16_t length)
+static void 
+feature_reputation_callback(const char *uri, atlas_coap_response_t resp_status,
+                            const uint8_t *resp_payload, size_t resp_payload_len)
+{
+    ATLAS_LOGGER_DEBUG("Feature reputation callback executed");
+    printf("Feature callback executed\n");
+
+    if (resp_status != ATLAS_COAP_RESP_OK) {
+        ATLAS_LOGGER_ERROR("Error in sending the feature request");
+        printf("Error in sending the feature request\n");
+        /* TODO: trimite eroare la data plane */
+        return;
+    }
+
+    atlas_reputation_resp_parse(resp_payload, resp_payload_len);
+    
+    ATLAS_LOGGER_INFO("Sending feature reputation to data plane is COMPLETED!");
+    printf("Sending feature reputation to data plane is COMPLETED!\n");
+}
+
+static void
+atlas_feature_reputation_handle(const uint8_t *feature, uint16_t length)
 {
     atlas_cmd_batch_t *cmd_batch;
     atlas_status_t status;
     uint8_t *cmd_buf = NULL;
     uint16_t cmd_len = 0;
     const char *identity = atlas_identity_get();
-
     char uri[ATLAS_URI_MAX_LEN] = { 0 };
 
+    if (!feature || !length) {
+        ATLAS_LOGGER_ERROR("Invalid feature reputation request");
+        return;
+    }
 
     cmd_batch = atlas_cmd_batch_new();
 
@@ -252,14 +253,13 @@ atlas_init_feature_command(const uint8_t *feature, uint16_t length)
     
     /* Add feature */
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_FEATURE, length, feature);
-    
 
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
 
     atlas_cfg_coap_get_uri(ATLAS_CLIENT_FEATURE_COAP_PATH, uri);
     status = atlas_coap_client_request(uri, ATLAS_COAP_METHOD_PUT,
                                        cmd_buf, cmd_len, ATLAS_CLIENT_FEATURE_TIMEOUT_MS,
-                                       feature_callback);
+                                       feature_reputation_callback);
 
     if (status != ATLAS_OK){
         ATLAS_LOGGER_ERROR("Error when sending feature request");
@@ -267,7 +267,6 @@ atlas_init_feature_command(const uint8_t *feature, uint16_t length)
     }
 
     atlas_cmd_batch_free(cmd_batch);
-    
 }
 
 static void
@@ -347,7 +346,7 @@ atlas_data_plane_read_cb(int fd)
             set_packets_avg(cmd->value);
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE){
             printf("request feature reputation command: %s\n", cmd->value);
-            atlas_init_feature_command(cmd->value, cmd->length);
+            atlas_feature_reputation_handle(cmd->value, cmd->length);
         }
 
         cmd = atlas_cmd_batch_get(cmd_batch, cmd);
@@ -388,7 +387,7 @@ bind_socket()
     }
 
     rc = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
-    if (rc == -1){
+    if (rc == -1) {
         ATLAS_LOGGER_ERROR("Socket bind error");
         return ATLAS_SOCKET_ERROR;
     }

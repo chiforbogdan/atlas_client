@@ -38,10 +38,10 @@ static void send_statistics_command();
 static void write_to_socket(const uint8_t* buffer,uint16_t cmd_len);
 static void socket_connect();
 static void restore_payload();
-static void send_reputation_command(char *feature);
+static void send_reputation_command(const char *feature);
 
-static void 
-*register_to_atlas_client(){
+static void*
+register_to_atlas_client(){
     
     ATLAS_LOGGER_DEBUG("DP: Register to atlas_client");
 
@@ -54,7 +54,7 @@ static void
     send_registration_command();
    
     
-    while(1){
+    while(1) {
         
         send_statistics_command();
 	
@@ -62,6 +62,7 @@ static void
 
         sleep(SLEEPTIME);
     }
+
     return NULL;
 }
 
@@ -134,9 +135,6 @@ send_statistics_command()
     atlas_cmd_batch_free(cmd_batch);
 }
 
-
-
-
 static void 
 socket_connect()
 {
@@ -159,7 +157,7 @@ write_to_socket(const uint8_t* cmd_buf, uint16_t cmd_len)
 {
     int n = write(fd, cmd_buf, cmd_len); 
     
-    while(n<0){
+    while(n < 0) {
 	     ATLAS_LOGGER_ERROR("DP: ERROR writing to socket."); 
 	     close(fd);
 	     sleep(2);
@@ -168,8 +166,6 @@ write_to_socket(const uint8_t* cmd_buf, uint16_t cmd_len)
 	     
 	     n = write(fd, cmd_buf, cmd_len);  
      }
-     
-     
 }	
 
 static void 
@@ -231,7 +227,7 @@ atlas_reputation_request(char *feature)
 }
 
 static void 
-send_reputation_command(char *feature)
+send_reputation_command(const char *feature)
 {
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
@@ -284,7 +280,7 @@ send_reputation_command(char *feature)
 }
 
 void 
-atlas_init( char* user, char* client_id, uint16_t qos, uint16_t ppm, uint16_t pack_maxlen)
+atlas_init(char* user, char* client_id, uint16_t qos, uint16_t ppm, uint16_t pack_maxlen)
 {
     client.username = strdup(user);
     client.clientid = strdup(client_id);

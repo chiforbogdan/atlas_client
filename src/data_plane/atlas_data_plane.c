@@ -7,8 +7,6 @@
 #include "MQTTClient.h"
 #include "../logger/atlas_logger.h"
 
-
-
 #define TIMEOUT 1000L
 
 volatile MQTTClient_deliveryToken deliveredtoken;
