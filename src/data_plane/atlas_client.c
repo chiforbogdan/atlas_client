@@ -11,8 +11,10 @@
 #include "../utils/atlas_utils.h"
 #include "MQTTClient.h"
 
-#define SLEEPTIME 10
+#define SLEEPTIME (60)
 #define ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN (2048)
+#define ATLAS_CLIENT_DATA_PLANE_FEEDBACK_WINDOW_SIZE (10)
+
 
 int fd;
 struct sockaddr_un addr;
@@ -195,6 +197,33 @@ atlas_pkt_received(int payload)
     pthread_mutex_unlock(&mutex);
 }
 
+static uint16_t
+compute_feedback(uint16_t tmp)
+{
+    return 1;
+}
+
+static void
+send_feedback_command(uint16_t tmp)
+{
+    atlas_cmd_batch_t *cmd_batch;
+    uint8_t *cmd_buf = NULL;
+    uint16_t cmd_len = 0;
+
+    tmp = compute_feedback(tmp);
+
+    cmd_batch = atlas_cmd_batch_new();
+
+     /* Add feedback value */
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_FEEDBACK, 
+                        sizeof(tmp), (uint8_t *)&tmp);
+    atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
+    printf("SEND FEEDBACK\n");
+    write_to_socket(cmd_buf, cmd_len);
+    
+    atlas_cmd_batch_free(cmd_batch);
+}
+
 void
 atlas_reputation_request(char *feature)
 {
@@ -211,6 +240,7 @@ send_reputation_command(char *feature)
     uint8_t buf[ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN];
     atlas_status_t status;
     int r;
+    uint16_t tmp;
     
     cmd_batch = atlas_cmd_batch_new();
     
@@ -243,9 +273,9 @@ send_reputation_command(char *feature)
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
     while (cmd) {
         if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE){
-            uint16_t tmp;
             memcpy(&tmp, cmd->value, sizeof(tmp));
             printf("Am primit de la GW: %d\n", tmp);
+            send_feedback_command(tmp);
         }
         cmd = atlas_cmd_batch_get(cmd_batch, cmd);
     }

@@ -128,13 +128,14 @@ MQTTClient start_MQTTclient(char *topics, char* serverURI){
 }
 
 int verify_arguments(int argc, char** argv){
-    if(!(argc < 15 || strcmp(argv[1], "--publish") 
+    if(!(argc < 17 || strcmp(argv[1], "--publish") 
                     || strcmp(argv[3], "--subscribe") 
                     || strcmp(argv[5], "--serverURI")
                     || strcmp(argv[7], "--clientid")
                     || strcmp(argv[9], "--qos")
                     || strcmp(argv[11], "--ppm")
                     || strcmp(argv[13], "--maxlen")
+                    || strcmp(argv[15], "--reputation")
                     ))
         return 1; 
     return 0;
@@ -166,7 +167,7 @@ static void traffic_generator(MQTTClient atlasMQTTclient, char* str){
 
 static void print_usage()
 {
-    printf("Usage: ./data_plane --publish \"feature1:X1:Y1:Z1, feature2:X2:Y2:Z2\" --subscribe \"feature1, feature2\" --serverURI protocol://host:port --clientid <clientid> --qos <qos> --ppm <ppm> --maxlen <maxlen>\n");
+    printf("Usage: ./data_plane --publish \"feature1:X1:Y1:Z1, feature2:X2:Y2:Z2\" --subscribe \"feature1, feature2\" --serverURI protocol://host:port --clientid <clientid> --qos <qos> --ppm <ppm> --maxlen <maxlen> --reputation <feature>\n");
 
 }
 
@@ -184,7 +185,7 @@ int main(int argc, char *argv[])
             /* start MQTT client */
             atlasMQTTclient = start_MQTTclient(argv[4], argv[6]);
 
-            atlas_reputation_request("temp");
+            atlas_reputation_request(argv[16]);
         
             traffic_generator(atlasMQTTclient, argv[2]);
         }  

@@ -108,7 +108,13 @@ typedef enum _atlas_cmd_type
     /* Packets average command: payload is the average length of received packets*/
     ATLAS_CMD_DATA_PLANE_PACKETS_AVG,
 
+    /* Feature reputation request command: payload is the feature for which the data_plane 
+     * requests the reputation value*/
     ATLAS_CMD_DATA_PLANE_FEATURE = 1500,
+
+    /* Feedback command: payload is the feedback value for which the data_plane 
+     * received the reputation value*/
+    ATLAS_CMD_DATA_PLANE_FEEDBACK,
 
 } atlas_cmd_type_t;
 
