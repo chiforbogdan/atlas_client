@@ -12,6 +12,7 @@
 #include "MQTTClient.h"
 
 #define SLEEPTIME 10
+#define ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN (2048)
 
 int fd;
 struct sockaddr_un addr;
@@ -206,7 +207,10 @@ send_reputation_command(char *feature)
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
     uint16_t cmd_len = 0;
-    uint8_t buf[512];
+    const atlas_cmd_t *cmd;
+    uint8_t buf[ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN];
+    atlas_status_t status;
+    int r;
     
     cmd_batch = atlas_cmd_batch_new();
     
@@ -217,15 +221,33 @@ send_reputation_command(char *feature)
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
     printf("REQUEST REPUTATION\n");
     write_to_socket(cmd_buf, cmd_len);
-    printf("\n");
     
-    int r = read(fd, buf, sizeof(buf)); 
-    printf("Am primit: %s  %d\n", buf, fd);
+    r = read(fd, buf, sizeof(buf)); 
     while( r <= 0 ){
         printf("Read error\n");
         r = read(fd, buf, sizeof(buf));
     } 
+    cmd_batch = atlas_cmd_batch_new();
     
+    status = atlas_cmd_batch_set_raw(cmd_batch, buf, r);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Corrupted command from data plane");
+        printf("Corrupted command from data plane\n");
+        atlas_cmd_batch_free(cmd_batch);
+        return;
+    }
+
+    cmd = atlas_cmd_batch_get(cmd_batch, NULL);
+    while (cmd) {
+        if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE){
+            uint16_t tmp;
+            memcpy(&tmp, cmd->value, sizeof(tmp));
+            printf("Am primit de la GW: %d\n", tmp);
+        }
+        cmd = atlas_cmd_batch_get(cmd_batch, cmd);
+    }
+
+
     atlas_cmd_batch_free(cmd_batch);
 }
 
