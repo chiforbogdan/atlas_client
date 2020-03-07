@@ -116,6 +116,8 @@ typedef enum _atlas_cmd_type
      * received the reputation value*/
     ATLAS_CMD_DATA_PLANE_FEEDBACK,
 
+    ATLAS_CMD_DATA_PLANE_FEATURE_ERROR,
+
 } atlas_cmd_type_t;
 
 #endif /* __ATLAS_COMMAND_TYPE_H__ */

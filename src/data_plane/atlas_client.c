@@ -272,6 +272,9 @@ send_reputation_command(const char *feature)
             memcpy(&tmp, cmd->value, sizeof(tmp));
             printf("Am primit de la GW: %d\n", tmp);
             send_feedback_command(tmp);
+        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_ERROR) {
+            ATLAS_LOGGER_ERROR("No reputation value received.");
+            printf("Am primit de la GW: ERROR\n");
         }
         cmd = atlas_cmd_batch_get(cmd_batch, cmd);
     }
