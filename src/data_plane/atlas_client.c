@@ -205,6 +205,10 @@ send_feedback_command(uint16_t tmp)
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
     uint16_t cmd_len = 0;
+    const atlas_cmd_t *cmd;
+    uint8_t buf[ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN];
+    atlas_status_t status;
+    int r;
 
     tmp = compute_feedback(tmp);
 
@@ -218,6 +222,34 @@ send_feedback_command(uint16_t tmp)
     write_to_socket(cmd_buf, cmd_len);
     
     atlas_cmd_batch_free(cmd_batch);
+
+    r = read(fd, buf, sizeof(buf));
+    if (r <= 0) {
+        ATLAS_LOGGER_ERROR("Error when reading confirmation of receiving feedback.");
+        return;
+    }
+
+    cmd_batch = atlas_cmd_batch_new();
+    
+    status = atlas_cmd_batch_set_raw(cmd_batch, buf, r);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Corrupted command from atlas_client");
+        printf("Corrupted command from atlas_client\n");
+        atlas_cmd_batch_free(cmd_batch);
+        return;
+    }
+
+    cmd = atlas_cmd_batch_get(cmd_batch, NULL);
+    while (cmd) {
+        if (cmd->type == ATLAS_CMD_DATA_PLANE_FEEDBACK_ERROR) {
+            ATLAS_LOGGER_ERROR("Error in sending the feedback to gateway");
+            printf("Error in sending the feedback to gateway\n");
+        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_SUCCESSFULLY_DELIVERED) {
+            ATLAS_LOGGER_DEBUG("Feedback successfully delivered to gateway");
+            printf("Feedback successfully delivered to gateway\n");
+        }
+        cmd = atlas_cmd_batch_get(cmd_batch, cmd);
+    }
 }
 
 void
@@ -241,7 +273,7 @@ send_reputation_command(const char *feature)
     cmd_batch = atlas_cmd_batch_new();
     
      /* Add feature */
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_FEATURE, strlen(feature),
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION, strlen(feature),
                         (uint8_t *)feature);
     
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
@@ -260,15 +292,15 @@ send_reputation_command(const char *feature)
     
     status = atlas_cmd_batch_set_raw(cmd_batch, buf, r);
     if (status != ATLAS_OK) {
-        ATLAS_LOGGER_ERROR("Corrupted command from data plane");
-        printf("Corrupted command from data plane\n");
+        ATLAS_LOGGER_ERROR("Corrupted command from atlas_client");
+        printf("Corrupted command from atlas_client\n");
         atlas_cmd_batch_free(cmd_batch);
         return;
     }
 
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
     while (cmd) {
-        if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE){
+        if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION){
             memcpy(&tmp, cmd->value, sizeof(tmp));
             printf("Am primit de la GW: %d\n", tmp);
             send_feedback_command(tmp);
