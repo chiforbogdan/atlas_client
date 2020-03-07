@@ -38,7 +38,7 @@ static void send_statistics_command();
 static void write_to_socket(const uint8_t* buffer,uint16_t cmd_len);
 static void socket_connect();
 static void restore_payload();
-static void send_reputation_command(const char *feature);
+atlas_status_t send_reputation_command(const char *feature);
 
 static void*
 register_to_atlas_client(){
@@ -199,7 +199,7 @@ compute_feedback(uint16_t tmp)
     return 1;
 }
 
-static void
+atlas_status_t
 send_feedback_command(uint16_t tmp)
 {
     atlas_cmd_batch_t *cmd_batch;
@@ -226,7 +226,7 @@ send_feedback_command(uint16_t tmp)
     r = read(fd, buf, sizeof(buf));
     if (r <= 0) {
         ATLAS_LOGGER_ERROR("Error when reading confirmation of receiving feedback.");
-        return;
+        return ATLAS_SOCKET_ERROR;
     }
 
     cmd_batch = atlas_cmd_batch_new();
@@ -236,7 +236,7 @@ send_feedback_command(uint16_t tmp)
         ATLAS_LOGGER_ERROR("Corrupted command from atlas_client");
         printf("Corrupted command from atlas_client\n");
         atlas_cmd_batch_free(cmd_batch);
-        return;
+        return status;
     }
 
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
@@ -250,15 +250,17 @@ send_feedback_command(uint16_t tmp)
         }
         cmd = atlas_cmd_batch_get(cmd_batch, cmd);
     }
+
+    return status;
 }
 
-void
+atlas_status_t 
 atlas_reputation_request(char *feature)
 {
-    send_reputation_command(feature);
+    return send_reputation_command(feature);
 }
 
-static void 
+atlas_status_t 
 send_reputation_command(const char *feature)
 {
     atlas_cmd_batch_t *cmd_batch;
@@ -285,7 +287,7 @@ send_reputation_command(const char *feature)
     r = read(fd, buf, sizeof(buf));
     if (r <= 0) {
         ATLAS_LOGGER_ERROR("Error when reading the reputation value for requested feature");
-        return;
+        return ATLAS_SOCKET_ERROR;
     }
 
     cmd_batch = atlas_cmd_batch_new();
@@ -295,7 +297,7 @@ send_reputation_command(const char *feature)
         ATLAS_LOGGER_ERROR("Corrupted command from atlas_client");
         printf("Corrupted command from atlas_client\n");
         atlas_cmd_batch_free(cmd_batch);
-        return;
+        return status;
     }
 
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
@@ -312,6 +314,8 @@ send_reputation_command(const char *feature)
     }
 
     atlas_cmd_batch_free(cmd_batch);
+
+    return status;
 }
 
 void 

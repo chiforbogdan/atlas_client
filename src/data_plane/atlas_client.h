@@ -9,5 +9,7 @@ void atlas_pkt_received(int payload);
 
 void atlas_reputation_request(char *feature);
 
+void send_feedback_command(uint16_t tmp);
+
 #endif /* __ATLAS_CLIENT_H__ */
 
