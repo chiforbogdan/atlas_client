@@ -19,7 +19,6 @@
 #include "../identity/atlas_identity.h"
 #include "atlas_data_plane_connector.h"
 
-
 #define ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN (2048)
 #define ATLAS_CLIENT_POLICY_TIMEOUT_MS  (5000)
 #define ATLAS_CLIENT_FEATURE_TIMEOUT_MS  (5000)
@@ -431,8 +430,9 @@ atlas_data_plane_read_cb(int fd)
     int rc;
 
     rc = read(cl, buf, sizeof(buf));
-    if ( rc <= 0) {
-        ATLAS_LOGGER_ERROR("Socket read error");
+    if (rc <= 0) {
+        ATLAS_LOGGER_ERROR("Socket read error. Remove socket from scheduler");
+        atlas_sched_del_entry(fd);
         return;
     }
     
@@ -451,12 +451,11 @@ atlas_data_plane_read_cb(int fd)
             atlas_data_plane_parse_policy(cmd->value, cmd->length);
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE ) {
             set_packets_per_min(cmd->value);
-        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_AVG ) {
+        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_AVG) {
             set_packets_avg(cmd->value);
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION){
             atlas_feature_reputation_handle(cmd->value, cmd->length);
-        }
-        else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEEDBACK){
+        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEEDBACK){
             printf("Send feedback command: %s\n", cmd->value);
             atlas_feature_feedback_handle(cmd->value, cmd->length);
         }
@@ -525,7 +524,7 @@ atlas_status_t
 atlas_data_plane_connector_start()
 {
     atlas_status_t status;
-    
+   
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, ATLAS_DATA_PLANE_UNIX_SOCKET_PATH, sizeof(addr.sun_path) - 1);
