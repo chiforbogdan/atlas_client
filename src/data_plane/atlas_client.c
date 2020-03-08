@@ -114,11 +114,13 @@ send_statistics_command()
     atlas_cmd_batch_t *cmd_batch;
     uint8_t *cmd_buf = NULL;
     uint16_t cmd_len = 0;
+    static int cnt = 0;
     
     cmd_batch = atlas_cmd_batch_new();
 
     pthread_mutex_lock(&mutex);
-    
+   
+    payload_samples = cnt++; 
     /* Add packets per minute received*/
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE, sizeof(payload_samples), (uint8_t *)&payload_samples);
     
@@ -143,7 +145,7 @@ socket_connect()
 
     /* Init ATLAS client socket */
     close(fd);
-    if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+    if ((fd = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
         ATLAS_LOGGER_ERROR("DP: Socket error");
         return;
     }

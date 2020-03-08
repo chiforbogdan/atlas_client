@@ -429,10 +429,9 @@ atlas_data_plane_read_cb(int fd)
     atlas_status_t status;
     int rc;
 
-    rc = read(cl, buf, sizeof(buf));
+    rc = read(fd, buf, sizeof(buf));
     if (rc <= 0) {
         ATLAS_LOGGER_ERROR("Socket read error. Remove socket from scheduler");
-        atlas_sched_del_entry(fd);
         return;
     }
     
@@ -466,32 +465,12 @@ atlas_data_plane_read_cb(int fd)
     atlas_cmd_batch_free(cmd_batch);
 }
 
-static void
-atlas_data_plane_accept_cb(int fd)
-{ 
-    /* Allow only one connection */
-    if (cl != -1) {
-        ATLAS_LOGGER_DEBUG("Close existing unix socket...");
-        atlas_sched_del_entry(cl);	
-	close(cl);
-    }
-
-    cl = accept(fd, NULL, NULL);
-    if (cl == -1) {
-        ATLAS_LOGGER_ERROR("Socket accept error");
-	return;
-    }
-
-    /* FIXME what if a connection already exists */
-    atlas_sched_add_entry(cl, atlas_data_plane_read_cb);
-} 
-
 static atlas_status_t
 bind_socket()
 {
     int rc;
 
-    fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    fd = socket(AF_UNIX, SOCK_DGRAM, 0);
     if (fd  == -1) {
         ATLAS_LOGGER_ERROR("Socket error");
         return ATLAS_SOCKET_ERROR;
@@ -500,20 +479,6 @@ bind_socket()
     rc = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
     if (rc == -1) {
         ATLAS_LOGGER_ERROR("Socket bind error");
-        return ATLAS_SOCKET_ERROR;
-    }
-
-    return ATLAS_OK;
-}
-
-static atlas_status_t
-listen_socket()
-{
-    int rc;
-    
-    rc = listen(fd, 1);
-    if (rc == -1) {
-        ATLAS_LOGGER_ERROR("Socket listen error");
         return ATLAS_SOCKET_ERROR;
     }
 
@@ -535,11 +500,7 @@ atlas_data_plane_connector_start()
     if (status != ATLAS_OK)
         return status;
 
-    status = listen_socket();
-    if (status != ATLAS_OK)
-        return ATLAS_OK;
-
-    atlas_sched_add_entry(fd, atlas_data_plane_accept_cb);
+    atlas_sched_add_entry(fd, atlas_data_plane_read_cb);
 
     return ATLAS_OK;
 }
