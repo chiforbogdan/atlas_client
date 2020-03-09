@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <errno.h>
 
 #include "../scheduler/atlas_scheduler.h"
 #include "../logger/atlas_logger.h"
@@ -26,9 +27,7 @@
 #define ATLAS_CLIENT_FEATURE_COAP_PATH   "gateway/reputation/feature"
 #define ATLAS_CLIENT_FEEDBACK_COAP_PATH   "gateway/reputation/feedback"
 
-static struct sockaddr_un addr;
-static int fd = -1;
-static int cl = -1;
+static int connected_socket = -1;
 
 static char *username;
 static char *clientid;
@@ -196,8 +195,12 @@ atlas_reputation_resp_parse(const uint8_t *buf, uint16_t buf_len)
             atlas_cmd_batch_get_buf(cmd_batch_send, &cmd_buf, &cmd_len);
 
             /* Send reputation value to data plane */            
-            if (write(cl, cmd_buf, cmd_len) != cmd_len)
+            int ret = write(connected_socket, cmd_buf, cmd_len);
+            //if (write(fd, cmd_buf, cmd_len) != cmd_len) {
+            if (ret != cmd_len) {
                 ATLAS_LOGGER_ERROR("Error writing to socket the reputation value.");
+                printf("ERRRRRR % d %d\n", ret, errno);
+            }
             
             atlas_cmd_batch_free(cmd_batch_send);
         }
@@ -234,7 +237,7 @@ feature_reputation_callback(const char *uri, atlas_coap_response_t resp_status,
         atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
 
         /* Send error to data plane */            
-        if (write(cl, cmd_buf, cmd_len) != cmd_len){                
+        if (write(connected_socket, cmd_buf, cmd_len) != cmd_len){                
             ATLAS_LOGGER_ERROR("Error writing to socket the reputation value.");
             printf("Error writing to socket the reputation value.\n");
         }
@@ -311,7 +314,7 @@ feedback_callback(const char *uri, atlas_coap_response_t resp_status,
         atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
 
         /* Send error to data plane */            
-        if (write(cl, cmd_buf, cmd_len) != cmd_len){                
+        if (write(connected_socket, cmd_buf, cmd_len) != cmd_len){                
             ATLAS_LOGGER_ERROR("Error writing to socket the feedback value.");
             printf("Error writing to socket the feedback value.\n");
         }
@@ -329,7 +332,7 @@ feedback_callback(const char *uri, atlas_coap_response_t resp_status,
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
 
     /* Send command to data plane */            
-    if (write(cl, cmd_buf, cmd_len) != cmd_len){                
+    if (write(connected_socket, cmd_buf, cmd_len) != cmd_len){                
         ATLAS_LOGGER_ERROR("Error in sending feedback successfully delivered command.");
         printf("Error in sending feedback successfully delivered command.\n");
     }
@@ -432,6 +435,7 @@ atlas_data_plane_read_cb(int fd)
     rc = read(fd, buf, sizeof(buf));
     if (rc <= 0) {
         ATLAS_LOGGER_ERROR("Socket read error. Remove socket from scheduler");
+        atlas_sched_del_entry(fd);
         return;
     }
     
@@ -465,13 +469,40 @@ atlas_data_plane_read_cb(int fd)
     atlas_cmd_batch_free(cmd_batch);
 }
 
-static atlas_status_t
-bind_socket()
-{
-    int rc;
+static void
+atlas_data_plane_accept_cb(int fd)
+{ 
+    /* Allow only one connection */
+    if (connected_socket != -1) {
+        ATLAS_LOGGER_DEBUG("Close existing unix socket...");
+        atlas_sched_del_entry(connected_socket);	
+	close(connected_socket);
+    }
 
-    fd = socket(AF_UNIX, SOCK_DGRAM, 0);
-    if (fd  == -1) {
+    connected_socket = accept(fd, NULL, NULL);
+    if (connected_socket == -1) {
+        ATLAS_LOGGER_ERROR("Socket accept error");
+	return;
+    }
+
+    atlas_sched_add_entry(connected_socket, atlas_data_plane_read_cb);
+} 
+
+atlas_status_t
+atlas_data_plane_connector_start()
+{
+    struct sockaddr_un addr;
+    int fd;
+    int rc;
+     
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, ATLAS_DATA_PLANE_UNIX_SOCKET_PATH, sizeof(addr.sun_path) - 1);
+
+    unlink(addr.sun_path);
+    
+    fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+    if (fd == -1) {
         ATLAS_LOGGER_ERROR("Socket error");
         return ATLAS_SOCKET_ERROR;
     }
@@ -482,25 +513,13 @@ bind_socket()
         return ATLAS_SOCKET_ERROR;
     }
 
-    return ATLAS_OK;
-}
-
-atlas_status_t
-atlas_data_plane_connector_start()
-{
-    atlas_status_t status;
-   
-    memset(&addr, 0, sizeof(addr));
-    addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, ATLAS_DATA_PLANE_UNIX_SOCKET_PATH, sizeof(addr.sun_path) - 1);
+    rc = listen(fd, 1);
+    if (rc == -1) {
+        ATLAS_LOGGER_ERROR("Socket listen error");
+        return ATLAS_SOCKET_ERROR;
+    }
     
-    unlink(addr.sun_path);
-
-    status = bind_socket();
-    if (status != ATLAS_OK)
-        return status;
-
-    atlas_sched_add_entry(fd, atlas_data_plane_read_cb);
+    atlas_sched_add_entry(fd, atlas_data_plane_accept_cb);
 
     return ATLAS_OK;
 }

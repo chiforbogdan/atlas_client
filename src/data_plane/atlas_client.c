@@ -145,10 +145,12 @@ socket_connect()
 
     /* Init ATLAS client socket */
     close(fd);
-    if ((fd = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
+    if ((fd = socket(AF_UNIX, SOCK_SEQPACKET, 0)) == -1) {
         ATLAS_LOGGER_ERROR("DP: Socket error");
         return;
     }
+
+    printf("Connect again\n");
 
     while(rc) {
         rc = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
