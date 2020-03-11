@@ -14,6 +14,7 @@ volatile MQTTClient clientMQTT;
 MQTTClient_deliveryToken token = 0;
 MQTTClient_message pubmsg = MQTTClient_message_initializer;
 MQTTClient atlasMQTTclient;
+int flag_reputation = 0;
 
 char* clientid;
 uint16_t qos, ppm, maxlen;
@@ -57,6 +58,7 @@ void* publish(void* args){
     
     return NULL;
 }
+
 void request_feature_values(){
     
     const char* publish_msg = "value";
@@ -118,10 +120,12 @@ int msgarrvd(void *context, char *topicName, int topicLen,
             publish_feature_value();
         }
         else{
-            printf("Message arrived\n");
-            printf("     topic: %s\n", topicName);
-            printf("   message: %s\n", payloadptr);
-            send_feedback_command(payloadptr);
+            if(flag_reputation == 1){
+                printf("Message arrived\n");
+                printf("     topic: %s\n", topicName);
+                printf("   message: %s\n", payloadptr);
+                send_feedback_command(payloadptr);
+            }
         }
     }
 
@@ -168,14 +172,13 @@ MQTTClient start_MQTTclient(char *topics, char* serverURI){
 }
 
 int verify_arguments(int argc, char** argv){
-    if(!(argc < 17 || strcmp(argv[1], "--publish") 
+    if(!(argc < 15 || strcmp(argv[1], "--publish") 
                     || strcmp(argv[3], "--subscribe") 
                     || strcmp(argv[5], "--serverURI")
                     || strcmp(argv[7], "--clientid")
                     || strcmp(argv[9], "--qos")
                     || strcmp(argv[11], "--ppm")
-                    || strcmp(argv[13], "--maxlen")
-                    || strcmp(argv[15], "--reputation")
+                    || strcmp(argv[13], "--maxlen"))
                     ))
         return 1; 
     return 0;
@@ -224,8 +227,10 @@ int main(int argc, char *argv[])
             atlas_init( "username", clientid, qos, ppm, maxlen);
             /* start MQTT client */
             atlasMQTTclient = start_MQTTclient(argv[4], argv[6]);
-
-            atlas_reputation_request(argv[16]);
+            if (argc == 17){
+                atlas_reputation_request(argv[16]);
+                flag_reputation = 1;
+            }
         
             traffic_generator(atlasMQTTclient, argv[2]);
         }  
