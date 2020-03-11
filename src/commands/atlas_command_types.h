@@ -112,15 +112,24 @@ typedef enum _atlas_cmd_type
      * requests the reputation value*/
     ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION = 1500,
 
-    /* Feedback command: payload is the feedback value for which the data_plane 
-     * received the reputation value*/
+    /* Feedback command: payload is ATLAS_CMD_DATA_PLANE_FEEDBACK_CLIENTID,
+     * ATLAS_CMD_DATA_PLANE_FEEDBACK_FEATURE, ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE */
     ATLAS_CMD_DATA_PLANE_FEEDBACK,
+
+     /* ClientID command: payload is the client id */
+    ATLAS_CMD_DATA_PLANE_FEEDBACK_CLIENTID,
+    
+    /* Feature command: payload is the feature type */
+    ATLAS_CMD_DATA_PLANE_FEEDBACK_FEATURE,
+
+    /* Value command: payload is the feedback value */
+    ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE,
 
     ATLAS_CMD_DATA_PLANE_FEATURE_ERROR,
 
     ATLAS_CMD_DATA_PLANE_FEEDBACK_ERROR,
 
-    ATLAS_CMD_DATA_PLANE_FEATURE_SUCCESSFULLY_DELIVERED,
+    ATLAS_CMD_DATA_PLANE_FEATURE_SUCCESSFULLY_DELIVERED, 
 
 } atlas_cmd_type_t;
 

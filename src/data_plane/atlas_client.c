@@ -9,18 +9,20 @@
 #include "../commands/atlas_command_types.h"
 #include "../utils/atlas_utils.h"
 #include "MQTTClient.h"
+#include "atlas_data_plane.h"
 
 #define SLEEPTIME (60)
 #define ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN (2048)
 #define ATLAS_CLIENT_DATA_PLANE_FEEDBACK_WINDOW_SIZE (10)
 
-static int fd = -1;
+static volatile int fd = -1;
 static struct sockaddr_un addr;
 static pthread_mutex_t mutex;
 static pthread_t init_t;
 static int payload_samples = 0;
 static int payload_total = 0;
 static int payload_avg = 0;
+char* client_rep_id;
 
 struct registration
 {
@@ -38,6 +40,16 @@ static int write_to_socket(const uint8_t* buffer,uint16_t cmd_len);
 static void write_to_socket_retry(const uint8_t* buffer,uint16_t cmd_len);
 static void socket_connect();
 atlas_status_t send_reputation_command(const char *feature);
+
+static void set_client_rep_id(const uint8_t *client, uint16_t length)
+{
+    if (client_rep_id)
+        free(client_rep_id);
+
+    client_rep_id = (char *) malloc(length + 1);
+    memcpy(client_rep_id, client, length);
+    client_rep_id[length] = 0;
+}
 
 static void*
 register_to_atlas_client()
@@ -201,41 +213,63 @@ atlas_pkt_received(int payload)
 }
 
 static uint16_t
-compute_feedback(uint16_t tmp)
+compute_feedback(int tmp)
 {
     return 1;
 }
 
 atlas_status_t
-send_feedback_command(uint16_t tmp)
+send_feedback_command(char* payload)
 {
-    atlas_cmd_batch_t *cmd_batch = NULL;
-    uint8_t *cmd_buf = NULL;
-    uint16_t cmd_len = 0;
+    atlas_cmd_batch_t *cmd_batch_inner;
+    atlas_cmd_batch_t *cmd_batch_outer;
+    uint8_t *cmd_buf_inner = NULL;
+    uint16_t cmd_inner_len = 0;
+    uint8_t *cmd_buf_outer = NULL;
+    uint16_t cmd_outer_len = 0;
     const atlas_cmd_t *cmd;
     uint8_t buf[ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN];
     atlas_status_t status = ATLAS_OK;
     int bytes;
+    char* clientID;
+    int feature_value;
+    uint16_t tmp;
 
-    tmp = compute_feedback(tmp);
+    char *p = strtok(payload, ":");
+    clientID = p;
+    p = strtok(NULL, ":");
+    feature_value = atoi (p);
+    tmp = compute_feedback(feature_value);
 
-    cmd_batch = atlas_cmd_batch_new();
-
-     /* Add feedback value */
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_FEEDBACK, 
-                        sizeof(tmp), (uint8_t *)&tmp);
-    atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-    printf("SEND FEEDBACK\n");
+    if(strcmp(clientID, client_rep_id) == 0) {
+        /* Create feedback payload*/
+        cmd_batch_inner = atlas_cmd_batch_new();
     
-    bytes = write_to_socket(cmd_buf, cmd_len);
-    if (bytes != cmd_len) {
-        ATLAS_LOGGER_ERROR("Error when writing feedback command to client");
-        status = ATLAS_SOCKET_ERROR;
-        goto EXIT;
+        /* Add clientID */
+        atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_CLIENTID, strlen(client_rep_id),
+                            (uint8_t *)client_rep_id);
+        
+        /* Add feature */
+        atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_FEATURE, strlen("temp"),
+                            (uint8_t *)"temp");
+                            
+        /* Add value */
+        atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE, sizeof(tmp), (uint8_t *)&tmp);
+
+        atlas_cmd_batch_get_buf(cmd_batch_inner, &cmd_buf_inner, &cmd_inner_len);
+    
+        cmd_batch_outer = atlas_cmd_batch_new();
+
+        /* Add inner command: clientID, feature type, feedback value */
+        atlas_cmd_batch_add(cmd_batch_outer, ATLAS_CMD_DATA_PLANE_FEEDBACK, cmd_inner_len, cmd_buf_inner);
+        atlas_cmd_batch_get_buf(cmd_batch_outer, &cmd_buf_outer, &cmd_outer_len);
+        
+        /* Send data to atlas_client */
+        write_to_socket_retry(cmd_buf_outer, cmd_outer_len);
+        
+        atlas_cmd_batch_free(cmd_batch_inner);
+        atlas_cmd_batch_free(cmd_batch_outer);
     }
-    
-    atlas_cmd_batch_free(cmd_batch);
-    cmd_batch = NULL;
 
     /* Read command from client */
     bytes = read(fd, buf, sizeof(buf));
@@ -245,16 +279,16 @@ send_feedback_command(uint16_t tmp)
         goto EXIT;
     }
 
-    cmd_batch = atlas_cmd_batch_new();
+    cmd_batch_inner = atlas_cmd_batch_new();
     
-    status = atlas_cmd_batch_set_raw(cmd_batch, buf, bytes);
+    status = atlas_cmd_batch_set_raw(cmd_batch_inner, buf, bytes);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Corrupted command from atlas_client");
         printf("Corrupted command from atlas_client\n");
         goto EXIT;
     }
 
-    cmd = atlas_cmd_batch_get(cmd_batch, NULL);
+    cmd = atlas_cmd_batch_get(cmd_batch_inner, NULL);
     while (cmd) {
         if (cmd->type == ATLAS_CMD_DATA_PLANE_FEEDBACK_ERROR) {
             ATLAS_LOGGER_ERROR("Error in sending the feedback to gateway");
@@ -267,11 +301,11 @@ send_feedback_command(uint16_t tmp)
             goto EXIT;
         }
 
-        cmd = atlas_cmd_batch_get(cmd_batch, cmd);
+        cmd = atlas_cmd_batch_get(cmd_batch_inner, cmd);
     }
 
 EXIT:
-    atlas_cmd_batch_free(cmd_batch);
+    atlas_cmd_batch_free(cmd_batch_inner);
 
     return status;
 }
@@ -292,7 +326,7 @@ send_reputation_command(const char *feature)
     uint8_t buf[ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN];
     atlas_status_t status = ATLAS_OK;
     int bytes;
-    uint16_t tmp;
+    
     
     cmd_batch = atlas_cmd_batch_new();
     
@@ -330,10 +364,10 @@ send_reputation_command(const char *feature)
 
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
     while (cmd) {
-        if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION) {
-            memcpy(&tmp, cmd->value, sizeof(tmp));
-            printf("Am primit de la GW: %d\n", tmp);
-            send_feedback_command(tmp);
+        if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION) {            
+            set_client_rep_id(cmd->value, cmd->length);
+            printf("Am primit de la GW: %s\n", client_rep_id);
+            request_feature_values();
             goto EXIT;
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_ERROR) {
             ATLAS_LOGGER_ERROR("No reputation value received.");

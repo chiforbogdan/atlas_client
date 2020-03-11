@@ -57,13 +57,39 @@ void* publish(void* args){
     
     return NULL;
 }
+void request_feature_values(){
+    
+    const char* publish_msg = "value";
+    
+    pubmsg.qos = qos;
+    pubmsg.retained = 0;
+    pubmsg.payload = publish_msg;
+    pubmsg.payloadlen = strlen(publish_msg);
+    MQTTClient_publishMessage(atlasMQTTclient, "atlas/request/temp", &pubmsg, &token);
+    MQTTClient_waitForCompletion(atlasMQTTclient, token, TIMEOUT);
+    
+}
+
+void publish_feature_value(){
+    const char* publish_msg = "25";
+    char buff[256];
+
+    sprintf(buff, "%s:%s", clientid, publish_msg);
+   
+    pubmsg.qos = qos;
+    pubmsg.retained = 0;
+    pubmsg.payload = buff;
+    pubmsg.payloadlen = strlen(buff);
+    MQTTClient_publishMessage(atlasMQTTclient, "atlas/request/temp", &pubmsg, &token);
+    MQTTClient_waitForCompletion(atlasMQTTclient, token, TIMEOUT);  
+}
 
 void subscribe(MQTTClient client, char* topic){
 
 	char buff[256];
 	sprintf(buff, "atlas/%s", topic);
 	MQTTClient_subscribe(client, buff, qos);
-
+    printf("Subscribing to topic atlas/%s for client %s.\n", topic, clientid);
 	sprintf(buff, "Subscribing to topic atlas/%s for client %s using QOS %d\n", topic, clientid, qos);
 	ATLAS_LOGGER_DEBUG(buff);
  	
@@ -82,10 +108,23 @@ void delivered(void *context, MQTTClient_deliveryToken dt){
 
 int msgarrvd(void *context, char *topicName, int topicLen, 
 	    MQTTClient_message *message){
-            
-    //printf("Message arrived\n");
-    //printf("     topic: %s\n", topicName);
-    //printf("   message: %s\n", message->payload);
+
+    char *payloadptr;
+    payloadptr = (char *) malloc(message->payloadlen + 1);
+    memcpy(payloadptr, message->payload, message->payloadlen);
+    payloadptr[message->payloadlen] = 0;
+    if( strcmp(topicName, "atlas/request/temp") == 0 ) {  
+        if( strcmp(payloadptr, "value") == 0 ) {
+            publish_feature_value();
+        }
+        else{
+            printf("Message arrived\n");
+            printf("     topic: %s\n", topicName);
+            printf("   message: %s\n", payloadptr);
+            send_feedback_command(payloadptr);
+        }
+    }
+
    
     atlas_pkt_received(message->payloadlen);
     
@@ -121,6 +160,9 @@ MQTTClient start_MQTTclient(char *topics, char* serverURI){
                 
         p = strtok(NULL, ",");
     }
+
+    //Subscribe at request/feature topid in orde to receive the values from other clients
+    subscribe(client, "request/temp");
        
     return client;
 }

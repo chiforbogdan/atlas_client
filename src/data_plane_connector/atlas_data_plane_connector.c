@@ -187,7 +187,7 @@ atlas_reputation_resp_parse(const uint8_t *buf, uint16_t buf_len)
     
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
     while (cmd) {
-        if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION && cmd->length == sizeof(uint16_t)) {
+        if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION) {
             cmd_batch_send = atlas_cmd_batch_new();
             /* Add feature reputation value */
             atlas_cmd_batch_add(cmd_batch_send, ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION, cmd->length,
@@ -362,7 +362,7 @@ atlas_feature_feedback_handle(const uint8_t *feedback, uint16_t length)
 
     /* Add identity */
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_IDENTITY, strlen(identity), (uint8_t *)identity);
-    
+
     /* Add feedback */
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_FEEDBACK, length, feedback);
 
@@ -459,7 +459,6 @@ atlas_data_plane_read_cb(int fd)
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION){
             atlas_feature_reputation_handle(cmd->value, cmd->length);
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEEDBACK){
-            printf("Send feedback command: %s\n", cmd->value);
             atlas_feature_feedback_handle(cmd->value, cmd->length);
         }
 
