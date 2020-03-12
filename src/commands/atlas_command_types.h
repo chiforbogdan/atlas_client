@@ -113,10 +113,11 @@ typedef enum _atlas_cmd_type
     ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION = 1500,
 
     /* Feedback command: payload is ATLAS_CMD_DATA_PLANE_FEEDBACK_CLIENTID,
-     * ATLAS_CMD_DATA_PLANE_FEEDBACK_FEATURE, ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE */
+     * ATLAS_CMD_DATA_PLANE_FEEDBACK_FEATURE, ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE 
+       ATLAS_CMD_DATA_PLANE_FEEDBACK_RESPONSE_TIME*/
     ATLAS_CMD_DATA_PLANE_FEEDBACK,
 
-     /* ClientID command: payload is the client id */
+    /* ClientID command: payload is the client id */
     ATLAS_CMD_DATA_PLANE_FEEDBACK_CLIENTID,
     
     /* Feature command: payload is the feature type */
@@ -124,6 +125,10 @@ typedef enum _atlas_cmd_type
 
     /* Value command: payload is the feedback value */
     ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE,
+
+    /* Response time command: payload is the client response time  
+       for which the feedback is delivered*/
+    ATLAS_CMD_DATA_PLANE_FEEDBACK_RESPONSE_TIME,
 
     ATLAS_CMD_DATA_PLANE_FEATURE_ERROR,
 

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <time.h>
 #include "atlas_client.h"
 #include "MQTTClient.h"
 #include "../logger/atlas_logger.h"
@@ -18,6 +19,8 @@ int flag_reputation = 0;
 
 char* clientid;
 uint16_t qos, ppm, maxlen;
+clock_t t;
+
 
 typedef struct publish_struct{
     char* feature;
@@ -69,7 +72,7 @@ void request_feature_values(){
     pubmsg.payloadlen = strlen(publish_msg);
     MQTTClient_publishMessage(atlasMQTTclient, "atlas/request/temp", &pubmsg, &token);
     MQTTClient_waitForCompletion(atlasMQTTclient, token, TIMEOUT);
-    
+    t = clock();
 }
 
 void publish_feature_value(){
@@ -110,7 +113,7 @@ void delivered(void *context, MQTTClient_deliveryToken dt){
 
 int msgarrvd(void *context, char *topicName, int topicLen, 
 	    MQTTClient_message *message){
-
+    uint16_t response_time;
     char *payloadptr;
     payloadptr = (char *) malloc(message->payloadlen + 1);
     memcpy(payloadptr, message->payload, message->payloadlen);
@@ -124,7 +127,11 @@ int msgarrvd(void *context, char *topicName, int topicLen,
                 printf("Message arrived\n");
                 printf("     topic: %s\n", topicName);
                 printf("   message: %s\n", payloadptr);
-                send_feedback_command(payloadptr);
+
+                t = clock() - t;
+                response_time = (uint16_t) ((((double)t)/CLOCKS_PER_SEC)*1000);
+                
+                send_feedback_command(payloadptr, response_time);
             }
         }
     }

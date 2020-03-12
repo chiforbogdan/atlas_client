@@ -219,7 +219,7 @@ compute_feedback(int tmp)
 }
 
 atlas_status_t
-send_feedback_command(char* payload)
+send_feedback_command(char* payload, uint16_t time_ms)
 {
     atlas_cmd_batch_t *cmd_batch_inner;
     atlas_cmd_batch_t *cmd_batch_outer;
@@ -240,36 +240,37 @@ send_feedback_command(char* payload)
     p = strtok(NULL, ":");
     feature_value = atoi (p);
     tmp = compute_feedback(feature_value);
-
-    if(strcmp(clientID, client_rep_id) == 0) {
-        /* Create feedback payload*/
-        cmd_batch_inner = atlas_cmd_batch_new();
     
-        /* Add clientID */
-        atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_CLIENTID, strlen(client_rep_id),
-                            (uint8_t *)client_rep_id);
-        
-        /* Add feature */
-        atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_FEATURE, strlen("temp"),
-                            (uint8_t *)"temp");
-                            
-        /* Add value */
-        atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE, sizeof(tmp), (uint8_t *)&tmp);
+    /* Create feedback payload*/
+    cmd_batch_inner = atlas_cmd_batch_new();
 
-        atlas_cmd_batch_get_buf(cmd_batch_inner, &cmd_buf_inner, &cmd_inner_len);
+    /* Add clientID */
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_CLIENTID, strlen(clientID),
+                        (uint8_t *)clientID);
     
-        cmd_batch_outer = atlas_cmd_batch_new();
+    /* Add feature */
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_FEATURE, strlen("temp"),
+                        (uint8_t *)"temp");
+                        
+    /* Add value */
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE, sizeof(tmp), (uint8_t *)&tmp);
 
-        /* Add inner command: clientID, feature type, feedback value */
-        atlas_cmd_batch_add(cmd_batch_outer, ATLAS_CMD_DATA_PLANE_FEEDBACK, cmd_inner_len, cmd_buf_inner);
-        atlas_cmd_batch_get_buf(cmd_batch_outer, &cmd_buf_outer, &cmd_outer_len);
-        
-        /* Send data to atlas_client */
-        write_to_socket_retry(cmd_buf_outer, cmd_outer_len);
-        
-        atlas_cmd_batch_free(cmd_batch_inner);
-        atlas_cmd_batch_free(cmd_batch_outer);
-    }
+    /* Add response time */
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_RESPONSE_TIME, sizeof(time_ms), (uint8_t *)&time_ms);
+
+    atlas_cmd_batch_get_buf(cmd_batch_inner, &cmd_buf_inner, &cmd_inner_len);
+
+    cmd_batch_outer = atlas_cmd_batch_new();
+
+    /* Add inner command: clientID, feature type, feedback value */
+    atlas_cmd_batch_add(cmd_batch_outer, ATLAS_CMD_DATA_PLANE_FEEDBACK, cmd_inner_len, cmd_buf_inner);
+    atlas_cmd_batch_get_buf(cmd_batch_outer, &cmd_buf_outer, &cmd_outer_len);
+    
+    /* Send data to atlas_client */
+    write_to_socket_retry(cmd_buf_outer, cmd_outer_len);
+    
+    atlas_cmd_batch_free(cmd_batch_inner);
+    atlas_cmd_batch_free(cmd_batch_outer);
 
     /* Read command from client */
     bytes = read(fd, buf, sizeof(buf));
