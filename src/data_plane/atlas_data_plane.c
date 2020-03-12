@@ -178,8 +178,7 @@ int verify_arguments(int argc, char** argv){
                     || strcmp(argv[7], "--clientid")
                     || strcmp(argv[9], "--qos")
                     || strcmp(argv[11], "--ppm")
-                    || strcmp(argv[13], "--maxlen"))
-                    ))
+                    || strcmp(argv[13], "--maxlen")))
         return 1; 
     return 0;
 } 
