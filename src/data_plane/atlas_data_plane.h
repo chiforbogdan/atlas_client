@@ -3,6 +3,6 @@
 
 #include <stdint.h>
 
-void request_feature_values();
+void request_feature_values(const char* feature);
 
 #endif /* __ATLAS_DATA_PLANE_H__ */

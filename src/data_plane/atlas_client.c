@@ -219,7 +219,7 @@ compute_feedback(int tmp)
 }
 
 atlas_status_t
-send_feedback_command(char* payload, uint16_t time_ms)
+send_feedback_command(char* payload, uint16_t time_ms, char *feature)
 {
     atlas_cmd_batch_t *cmd_batch_inner;
     atlas_cmd_batch_t *cmd_batch_outer;
@@ -249,8 +249,8 @@ send_feedback_command(char* payload, uint16_t time_ms)
                         (uint8_t *)clientID);
     
     /* Add feature */
-    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_FEATURE, strlen("temp"),
-                        (uint8_t *)"temp");
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_FEATURE, strlen(feature),
+                        (uint8_t *)feature);
                         
     /* Add value */
     atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE, sizeof(tmp), (uint8_t *)&tmp);
@@ -368,7 +368,7 @@ send_reputation_command(const char *feature)
         if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION) {            
             set_client_rep_id(cmd->value, cmd->length);
             printf("Am primit de la GW: %s\n", client_rep_id);
-            request_feature_values();
+            request_feature_values(feature);
             goto EXIT;
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_ERROR) {
             ATLAS_LOGGER_ERROR("No reputation value received.");

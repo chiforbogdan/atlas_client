@@ -9,6 +9,8 @@
 #include "../logger/atlas_logger.h"
 
 #define TIMEOUT 1000L
+#define ATLAS_DATA_PLANE_REQUEST_REPUTATION_TOPIC "atlas/request"
+#define ATLAS_DATA_PLANE_BUFFER_LEN (256)
 
 volatile MQTTClient_deliveryToken deliveredtoken;
 volatile MQTTClient clientMQTT;
@@ -20,6 +22,8 @@ int flag_reputation = 0;
 char* clientid;
 uint16_t qos, ppm, maxlen;
 clock_t t;
+char* feature = NULL;
+uint16_t feature_value = 0;
 
 
 typedef struct publish_struct{
@@ -41,7 +45,7 @@ static int random_number_generator(int base_value, int deviation){
 void* publish(void* args){
     while(1){
 
-        char buff[256];
+        char buff[ATLAS_DATA_PLANE_BUFFER_LEN];
         char publish_msg[20];
         sprintf(publish_msg, "%d", random_number_generator(((publish_struct_t*)args)->base_value, ((publish_struct_t*)args)->deviation));
 
@@ -62,36 +66,40 @@ void* publish(void* args){
     return NULL;
 }
 
-void request_feature_values(){
+void request_feature_values(const char* feature){
     
     const char* publish_msg = "value";
-    
+
+    char *topic = malloc (strlen(ATLAS_DATA_PLANE_REQUEST_REPUTATION_TOPIC) + strlen(feature) + 2);
+    strcpy(topic, ATLAS_DATA_PLANE_REQUEST_REPUTATION_TOPIC);
+    strcat(topic, "/");
+    strcat(topic, feature);
+
     pubmsg.qos = qos;
     pubmsg.retained = 0;
     pubmsg.payload = publish_msg;
     pubmsg.payloadlen = strlen(publish_msg);
-    MQTTClient_publishMessage(atlasMQTTclient, "atlas/request/temp", &pubmsg, &token);
+    MQTTClient_publishMessage(atlasMQTTclient, topic, &pubmsg, &token); 
     MQTTClient_waitForCompletion(atlasMQTTclient, token, TIMEOUT);
     t = clock();
 }
 
-void publish_feature_value(){
-    const char* publish_msg = "25";
-    char buff[256];
+void publish_feature_value(char* topicName){
+    char buff[ATLAS_DATA_PLANE_BUFFER_LEN];
 
-    sprintf(buff, "%s:%s", clientid, publish_msg);
+    sprintf(buff, "%s:%u", clientid, feature_value);
    
     pubmsg.qos = qos;
     pubmsg.retained = 0;
     pubmsg.payload = buff;
     pubmsg.payloadlen = strlen(buff);
-    MQTTClient_publishMessage(atlasMQTTclient, "atlas/request/temp", &pubmsg, &token);
+    MQTTClient_publishMessage(atlasMQTTclient, topicName, &pubmsg, &token);
     MQTTClient_waitForCompletion(atlasMQTTclient, token, TIMEOUT);  
 }
 
 void subscribe(MQTTClient client, char* topic){
 
-	char buff[256];
+	char buff[ATLAS_DATA_PLANE_BUFFER_LEN];
 	sprintf(buff, "atlas/%s", topic);
 	MQTTClient_subscribe(client, buff, qos);
     printf("Subscribing to topic atlas/%s for client %s.\n", topic, clientid);
@@ -101,7 +109,7 @@ void subscribe(MQTTClient client, char* topic){
 }
 
 void connlost(void *context, char *cause){
-    char buff[256];
+    char buff[ATLAS_DATA_PLANE_BUFFER_LEN];
     sprintf(buff, "Connection lost, cause: %s.", cause);
     ATLAS_LOGGER_DEBUG(buff);
 }
@@ -113,16 +121,36 @@ void delivered(void *context, MQTTClient_deliveryToken dt){
 
 int msgarrvd(void *context, char *topicName, int topicLen, 
 	    MQTTClient_message *message){
+
     uint16_t response_time;
     char *payloadptr;
+    char *reqTopic;
+    char *featureTopic;
+
     payloadptr = (char *) malloc(message->payloadlen + 1);
     memcpy(payloadptr, message->payload, message->payloadlen);
     payloadptr[message->payloadlen] = 0;
-    if( strcmp(topicName, "atlas/request/temp") == 0 ) {  
+
+    if(feature != NULL){
+        featureTopic = (char *) malloc(strlen(feature) + 7);
+        strcpy(featureTopic, "atlas/");
+        strcat(featureTopic, feature);
+        if(strcmp(topicName, featureTopic) == 0) 
+            feature_value = atoi ( message->payload);
+    }
+
+    if (strstr(topicName, ATLAS_DATA_PLANE_REQUEST_REPUTATION_TOPIC) != NULL) {
+        reqTopic = (char*) malloc (strlen(ATLAS_DATA_PLANE_REQUEST_REPUTATION_TOPIC) + strlen(feature) + 2);
+        strcpy(reqTopic, ATLAS_DATA_PLANE_REQUEST_REPUTATION_TOPIC);
+        strcat(reqTopic, "/");
+        strcat(reqTopic, feature);
+    }
+
+    if( strcmp(topicName, reqTopic) == 0 ) {  
         if( strcmp(payloadptr, "value") == 0 ) {
-            publish_feature_value();
+            publish_feature_value(topicName);
         }
-        else{
+        else {
             if(flag_reputation == 1){
                 printf("Message arrived\n");
                 printf("     topic: %s\n", topicName);
@@ -130,13 +158,11 @@ int msgarrvd(void *context, char *topicName, int topicLen,
 
                 t = clock() - t;
                 response_time = (uint16_t) ((((double)t)/CLOCKS_PER_SEC)*1000);
-                
-                send_feedback_command(payloadptr, response_time);
+                send_feedback_command(payloadptr, response_time, feature);
             }
         }
     }
 
-   
     atlas_pkt_received(message->payloadlen);
     
     MQTTClient_freeMessage(&message);
@@ -148,6 +174,7 @@ MQTTClient start_MQTTclient(char *topics, char* serverURI){
     MQTTClient client;
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
     int rc;
+    char topic[ATLAS_DATA_PLANE_BUFFER_LEN];
 
     if(MQTTClient_create(&client, serverURI, clientid, MQTTCLIENT_PERSISTENCE_NONE, NULL) 
 		!= MQTTCLIENT_SUCCESS){
@@ -168,12 +195,14 @@ MQTTClient start_MQTTclient(char *topics, char* serverURI){
     
     while(p ){
         subscribe(client, p);
-                
+
+        //Subscribe at request/feature topic in order to send/receive values to/from other clients for reputation feedback
+        strcpy(topic, "request/");
+        strcat(topic, p);        
+        subscribe(client, topic);
+
         p = strtok(NULL, ",");
     }
-
-    //Subscribe at request/feature topid in orde to receive the values from other clients
-    subscribe(client, "request/temp");
        
     return client;
 }
@@ -233,12 +262,15 @@ int main(int argc, char *argv[])
             atlas_init( "username", clientid, qos, ppm, maxlen);
             /* start MQTT client */
             atlasMQTTclient = start_MQTTclient(argv[4], argv[6]);
-            if (argc == 17){
-                atlas_reputation_request(argv[16]);
-                flag_reputation = 1;
-            }
         
             traffic_generator(atlasMQTTclient, argv[2]);
+
+             if (argc == 17){
+                feature = strdup(argv[16]);
+                sleep(10);
+                atlas_reputation_request(feature);
+                flag_reputation = 1;
+            }
         }  
         else{
             print_usage();

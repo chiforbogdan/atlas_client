@@ -11,7 +11,7 @@ void atlas_pkt_received(int payload);
 
 atlas_status_t atlas_reputation_request(char *feature);
 
-atlas_status_t send_feedback_command(char* payload, uint16_t time_ms);
+atlas_status_t send_feedback_command(char* payload, uint16_t time_ms, char* feature);
 
 #endif /* __ATLAS_CLIENT_H__ */
 
