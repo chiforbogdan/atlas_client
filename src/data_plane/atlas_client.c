@@ -13,7 +13,6 @@
 
 #define SLEEPTIME (60)
 #define ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN (2048)
-#define ATLAS_CLIENT_DATA_PLANE_FEEDBACK_WINDOW_SIZE (10)
 
 static volatile int fd = -1;
 static struct sockaddr_un addr;
@@ -219,7 +218,7 @@ compute_feedback(int tmp)
 }
 
 atlas_status_t
-send_feedback_command(char* payload, uint16_t time_ms, char *feature)
+send_feedback_command(feedback_struct_t *feedback)
 {
     atlas_cmd_batch_t *cmd_batch_inner;
     atlas_cmd_batch_t *cmd_batch_outer;
@@ -231,32 +230,28 @@ send_feedback_command(char* payload, uint16_t time_ms, char *feature)
     uint8_t buf[ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN];
     atlas_status_t status = ATLAS_OK;
     int bytes;
-    char* clientID;
-    int feature_value;
     uint16_t tmp;
 
-    char *p = strtok(payload, ":");
-    clientID = p;
-    p = strtok(NULL, ":");
-    feature_value = atoi (p);
-    tmp = compute_feedback(feature_value);
+    tmp = compute_feedback(feedback->feature_value);
     
     /* Create feedback payload*/
     cmd_batch_inner = atlas_cmd_batch_new();
 
     /* Add clientID */
-    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_CLIENTID, strlen(clientID),
-                        (uint8_t *)clientID);
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_CLIENTID, strlen(feedback->clientID),
+                        (uint8_t *)feedback->clientID);
     
     /* Add feature */
-    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_FEATURE, strlen(feature),
-                        (uint8_t *)feature);
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_FEATURE, strlen(feedback->feature),
+                        (uint8_t *)feedback->feature);
                         
-    /* Add value */
-    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE, sizeof(tmp), (uint8_t *)&tmp);
+    /* Add feedback value */
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE, sizeof(tmp),
+                         (uint8_t *)&tmp);
 
     /* Add response time */
-    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_RESPONSE_TIME, sizeof(time_ms), (uint8_t *)&time_ms);
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_RESPONSE_TIME, sizeof(feedback->reponse_time), 
+                        (uint8_t *)&feedback->reponse_time);
 
     atlas_cmd_batch_get_buf(cmd_batch_inner, &cmd_buf_inner, &cmd_inner_len);
 
@@ -311,6 +306,17 @@ EXIT:
     return status;
 }
 
+void
+init_feedback_command(feedback_struct_t *feedback_entry)
+{
+    feedback_struct_t *p;
+    p = feedback_entry;
+    while (p) {
+        send_feedback_command(p);
+        p = p->next;
+    }
+}
+
 atlas_status_t 
 atlas_reputation_request(char *feature)
 {
@@ -336,7 +342,10 @@ send_reputation_command(const char *feature)
                         (uint8_t *)feature);
     
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-    printf("REQUEST REPUTATION\n");
+    sprintf((char*)buf, "Request clientID with best reputation for feature %s.", feature);
+    ATLAS_LOGGER_DEBUG((char*)buf);
+    printf("%s\n", buf);
+    
     bytes = write_to_socket(cmd_buf, cmd_len);
     if (bytes != cmd_len) {
         ATLAS_LOGGER_ERROR("Error when writing reputation request to client");
@@ -367,11 +376,13 @@ send_reputation_command(const char *feature)
     while (cmd) {
         if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION) {            
             set_client_rep_id(cmd->value, cmd->length);
-            printf("Am primit de la GW: %s\n", client_rep_id);
+            sprintf((char*)buf, "Request values for %s from clients.", feature);
+            ATLAS_LOGGER_DEBUG((char*)buf);
+            printf(" %s\n", buf);
             request_feature_values(feature);
             goto EXIT;
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_ERROR) {
-            ATLAS_LOGGER_ERROR("No reputation value received.");
+            ATLAS_LOGGER_ERROR("No clientID received.");
             printf("Am primit de la GW: ERROR\n");
             status = ATLAS_GENERAL_ERR;
             goto EXIT;
