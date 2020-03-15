@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <arpa/inet.h>
 #include "../logger/atlas_logger.h"
 #include "../commands/atlas_command.h"
 #include "../commands/atlas_command_types.h"
@@ -238,7 +239,7 @@ send_feedback_command(feedback_struct_t *feedback)
     int bytes;
     uint16_t tmp;
 
-    tmp = compute_feedback(feedback->feature_value);
+    //tmp = compute_feedback(feedback->feature_value);
     
     /* Create feedback payload*/
     cmd_batch_inner = atlas_cmd_batch_new();
@@ -252,12 +253,14 @@ send_feedback_command(feedback_struct_t *feedback)
                         (uint8_t *)feedback->feature);
                         
     /* Add feedback value */
+    tmp = htons(compute_feedback(feedback->feature_value));
     atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE, sizeof(tmp),
                          (uint8_t *)&tmp);
 
     /* Add response time */
-    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_RESPONSE_TIME, sizeof(feedback->reponse_time), 
-                        (uint8_t *)&feedback->reponse_time);
+    tmp = htons(feedback->reponse_time);
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_RESPONSE_TIME, sizeof(tmp), 
+                        (uint8_t *)&tmp);
 
     atlas_cmd_batch_get_buf(cmd_batch_inner, &cmd_buf_inner, &cmd_inner_len);
 
