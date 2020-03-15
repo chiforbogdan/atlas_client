@@ -56,7 +56,6 @@ atlas_sched_del_entry(int fd)
 	}
 }
 
-
 void
 atlas_sched_loop()
 {
@@ -94,8 +93,10 @@ atlas_sched_loop()
         result = select(max_fd + 1, &readfds, NULL, NULL, NULL);
         if (result > 0) {
             for (ent = sched_entry; ent; ent = ent->next)
-                if (!ent->dirty && FD_ISSET(ent->fd, &readfds))
+                if (!ent->dirty && FD_ISSET(ent->fd, &readfds)) {
                     ent->callback(ent->fd);
+                    FD_CLR(ent->fd, &readfds);
+                }
         }
     }
 }
