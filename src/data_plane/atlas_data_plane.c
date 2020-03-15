@@ -180,13 +180,7 @@ int msgarrvd(void *context, char *topicName, int topicLen,
 
                 t = clock() - t;
                 response_time = (uint16_t) ((((double)t)/CLOCKS_PER_SEC)*1000);
-                //if(response_time < ATLAS_DATA_PLANE_MQTT_TIMOUT_MS){
-                    //pun datele intr-o lista
                 feedback_struct_add(payloadptr, response_time, feature);
-                //}
-                //else
-                    //send_feedback_command(payloadptr, response_time, feature);
-                    
             }
         }
     }

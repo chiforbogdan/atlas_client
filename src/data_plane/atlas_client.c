@@ -13,6 +13,7 @@
 
 #define SLEEPTIME (60)
 #define ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN (2048)
+#define ATLAS_CLIENT_DATA_PLANE_SOCKET_READ_TIMEOUT_SEC (5)
 
 static volatile int fd = -1;
 static struct sockaddr_un addr;
@@ -153,6 +154,9 @@ static void
 socket_connect()
 {
     int rc = -1;
+    struct timeval timeout;
+    timeout.tv_sec = ATLAS_CLIENT_DATA_PLANE_SOCKET_READ_TIMEOUT_SEC;
+    timeout.tv_usec = 0;
 
     /* Init ATLAS client socket */
     close(fd);
@@ -160,6 +164,8 @@ socket_connect()
         ATLAS_LOGGER_ERROR("DP: Socket error");
         return;
     }
+
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 
     printf("Connect again\n");
 
