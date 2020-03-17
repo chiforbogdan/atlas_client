@@ -10,7 +10,15 @@ void atlas_init(const char* user, const char* client_id, uint16_t qos, uint16_t 
 
 void atlas_pkt_received(int payload);
 
-atlas_status_t atlas_reputation_request(char *feature);
+/**
+* @brief Execute a reputation request for a feature (category)
+* @param[in] feature Reputation feature
+* @param[out] clientid The most trusted clientid within a category. The buffer must be allocated by the caller.
+* @param[in] clientid_len The length of the clientid buffer. This function will copy at most clientid_len - 1 bytes
+*                         into the clientid buffer
+* @return status
+*/
+atlas_status_t atlas_reputation_request(const char *feature, char *clientid, size_t clientid_len);
 
 void init_feedback_command(feedback_struct_t *feedback_entry);
 

@@ -23,7 +23,6 @@ static pthread_t init_t;
 static int payload_samples = 0;
 static int payload_total = 0;
 static int payload_avg = 0;
-char* client_rep_id;
 
 struct registration
 {
@@ -40,17 +39,6 @@ static void send_statistics_command();
 static int write_to_socket(const uint8_t* buffer,uint16_t cmd_len);
 static void write_to_socket_retry(const uint8_t* buffer,uint16_t cmd_len);
 static void socket_connect();
-atlas_status_t send_reputation_command(const char *feature);
-
-static void set_client_rep_id(const uint8_t *client, uint16_t length)
-{
-    if (client_rep_id)
-        free(client_rep_id);
-
-    client_rep_id = (char *) malloc(length + 1);
-    memcpy(client_rep_id, client, length);
-    client_rep_id[length] = 0;
-}
 
 static void*
 register_to_atlas_client()
@@ -327,13 +315,7 @@ init_feedback_command(feedback_struct_t *feedback_entry)
 }
 
 atlas_status_t 
-atlas_reputation_request(char *feature)
-{
-    return send_reputation_command(feature);
-}
-
-atlas_status_t 
-send_reputation_command(const char *feature)
+atlas_reputation_request(const char *feature, char *clientid, size_t clientid_len)
 {
     atlas_cmd_batch_t *cmd_batch = NULL;
     uint8_t *cmd_buf = NULL;
@@ -342,8 +324,10 @@ send_reputation_command(const char *feature)
     uint8_t buf[ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN];
     atlas_status_t status = ATLAS_OK;
     int bytes;
-    
-    
+
+    if (!feature || !clientid || !clientid_len)
+        return ATLAS_INVALID_INPUT; 
+   
     cmd_batch = atlas_cmd_batch_new();
     
      /* Add feature */
@@ -364,7 +348,7 @@ send_reputation_command(const char *feature)
 
     atlas_cmd_batch_free(cmd_batch);
     cmd_batch = NULL;
-    
+   
     bytes = read(fd, buf, sizeof(buf));
     if (bytes <= 0) {
         ATLAS_LOGGER_ERROR("Error when reading the reputation value for requested feature");
@@ -384,15 +368,11 @@ send_reputation_command(const char *feature)
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
     while (cmd) {
         if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION) {            
-            set_client_rep_id(cmd->value, cmd->length);
-            sprintf((char*)buf, "Request values for %s from clients.", feature);
-            ATLAS_LOGGER_DEBUG((char*)buf);
-            printf(" %s\n", buf);
-            request_feature_values(feature);
+            memset(clientid, 0, clientid_len);
+            memcpy(clientid, cmd->value, cmd->length > clientid_len - 1 ? clientid_len - 1 : cmd->length); 
             goto EXIT;
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_ERROR) {
             ATLAS_LOGGER_ERROR("No clientID received.");
-            printf("Am primit de la GW: ERROR\n");
             status = ATLAS_GENERAL_ERR;
             goto EXIT;
         }

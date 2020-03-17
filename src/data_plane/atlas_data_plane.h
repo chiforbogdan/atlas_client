@@ -11,6 +11,4 @@ typedef struct feedback_struct {
     struct feedback_struct *next;
 } feedback_struct_t;
 
-void request_feature_values(const char* feature);
-
 #endif /* __ATLAS_DATA_PLANE_H__ */
