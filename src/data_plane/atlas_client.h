@@ -4,7 +4,15 @@
 #include <stdint.h>
 #include<time.h>
 #include "../utils/atlas_status.h"
-#include "atlas_data_plane.h"
+
+typedef struct feedback_struct {
+    char* clientID;
+    char* feature;
+    uint16_t feature_value;
+    uint16_t reponse_time;
+    struct feedback_struct *next;
+} feedback_struct_t;
+
 
 void atlas_init(const char* user, const char* client_id, uint16_t qos, uint16_t ppm, uint16_t pack_maxlen);
 

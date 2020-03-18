@@ -10,7 +10,7 @@
 #include "../commands/atlas_command_types.h"
 #include "../utils/atlas_utils.h"
 #include "MQTTClient.h"
-#include "atlas_data_plane.h"
+#include "atlas_client.h"
 
 #define SLEEPTIME (60)
 #define ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN (2048)
@@ -303,7 +303,8 @@ EXIT:
     return status;
 }
 
-void
+
+void 
 init_feedback_command(feedback_struct_t *feedback_entry)
 {
     feedback_struct_t *p;
@@ -313,6 +314,7 @@ init_feedback_command(feedback_struct_t *feedback_entry)
         p = p->next;
     }
 }
+
 
 atlas_status_t 
 atlas_reputation_request(const char *feature, char *clientid, size_t clientid_len)

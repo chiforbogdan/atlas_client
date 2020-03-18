@@ -7,13 +7,13 @@
 #include "atlas_client.h"
 #include "MQTTClient.h"
 #include "../logger/atlas_logger.h"
-#include "atlas_data_plane.h"
 
 #define ATLAS_DATA_PLANE_REQUEST_REPUTATION_TOPIC "atlas/request/"
 #define ATLAS_DATA_PLANE_CONSUME_TOPIC "atlas/"
 #define ATLAS_DATA_PLANE_REQUEST_REPUTATION_MSG "REQUEST"
 #define ATLAS_DATA_PLANE_BUFFER_LEN (256)
 #define ATLAS_DATA_PLANE_REPUTATION_WINDOW_SEC (10)
+#define ATLAS_DATA_PLANE_MESSAGE_MAX_LEN (20)
 
 #define ATLAS_CLIENTID_MAX_LEN (64)
 
@@ -43,25 +43,27 @@ static feedback_struct_t *feedback_entry = NULL;
 
 static void feedback_struct_add(char* payload, uint16_t time_ms, char *feature);
 static void* waiting_feature_values();
-    
-static int random_number_generator(int base_value, int deviation){
-    int lower, upper;
-    lower = base_value - deviation;
-    upper = base_value + deviation;
-    
-    return random() % (upper - lower +deviation) + lower;
+
+static int random_number_generator(int base_value, int deviation) 
+{
+    srand(time(0));
+    int randInterval = (2 * deviation) + 1; //generate value only in the interval of -/+ deviation
+    int lower = base_value - deviation; //limit the minimum value
+    return ((random() % randInterval) + lower);
 }
 
 void*
 publish(void* args)
 {
-    char buff[ATLAS_DATA_PLANE_BUFFER_LEN];
-    char publish_msg[20];
+    char* buff = NULL;
+    char* publish_msg = NULL;
  
     while(1) {
-        sprintf(publish_msg, "%d", random_number_generator(((publish_struct_t*)args)->base_value, ((publish_struct_t*)args)->deviation));
-
-	sprintf(buff, "atlas/%s", ((publish_struct_t*)args)->feature);
+        buff = malloc(ATLAS_DATA_PLANE_BUFFER_LEN + 1);
+        snprintf(buff, ATLAS_DATA_PLANE_BUFFER_LEN, "atlas/%s", ((publish_struct_t*)args)->feature);
+        
+        publish_msg = malloc(ATLAS_DATA_PLANE_MESSAGE_MAX_LEN + 1);
+        snprintf(publish_msg, ATLAS_DATA_PLANE_MESSAGE_MAX_LEN, "%d", random_number_generator(((publish_struct_t*)args)->base_value, ((publish_struct_t*)args)->deviation));
 
         pubmsg.qos = qos;
         pubmsg.retained = 0;
@@ -69,21 +71,23 @@ publish(void* args)
         pubmsg.payloadlen = strlen(publish_msg);
         MQTTClient_publishMessage(atlasMQTTclient, buff, &pubmsg, NULL);
         
+        free(buff);
+        free(publish_msg);
+
         sleep(((publish_struct_t*)args)->publish_rate);
-    }
-    
+    }    
     return NULL;
 }
 
 static void
 request_feature_values(const char* feature)
 {     
-    char *topic;
+    char *topic = NULL;
     MQTTClient_message rep_msg = MQTTClient_message_initializer;
 
-    topic = malloc (strlen(ATLAS_DATA_PLANE_REQUEST_REPUTATION_TOPIC) + strlen(feature) + 1);
-    strcpy(topic, ATLAS_DATA_PLANE_REQUEST_REPUTATION_TOPIC);
-    strcat(topic, feature);
+    topic = malloc(strlen(ATLAS_DATA_PLANE_REQUEST_REPUTATION_TOPIC) + strlen(feature) + 1);
+    strncpy(topic, ATLAS_DATA_PLANE_REQUEST_REPUTATION_TOPIC, strlen(ATLAS_DATA_PLANE_REQUEST_REPUTATION_TOPIC));
+    strncat(topic, feature, strlen(feature));
 
     /* Send a request to topic "atlas/request/{feature}" in order to get the
     most recent {feature} sensor value from all devices from the network */
@@ -113,44 +117,56 @@ waiting_feature_values()
     return NULL;
 }
 
-void publish_feature_value(char* topicName){
-    char buff[ATLAS_DATA_PLANE_BUFFER_LEN];
-
-    sprintf(buff, "%s:%u", clientid, feature_value);
+void 
+publish_feature_value(char* topicName){
+    char *buff = malloc(ATLAS_DATA_PLANE_BUFFER_LEN + 1);
+    snprintf(buff, ATLAS_DATA_PLANE_BUFFER_LEN, "%s:%u", clientid, feature_value);
    
     pubmsg.qos = qos;
     pubmsg.retained = 0;
     pubmsg.payload = buff;
     pubmsg.payloadlen = strlen(buff);
     MQTTClient_publishMessage(atlasMQTTclient, topicName, &pubmsg, NULL);
+
+    free(buff);
 }
 
 void
 subscribe(MQTTClient client, const char* topic)
 {
-    char buff[ATLAS_DATA_PLANE_BUFFER_LEN];
-    MQTTClient_subscribe(client, topic, qos);
-    
+    MQTTClient_subscribe(client, topic, qos);    
     printf("Subscribing to topic %s for client %s.\n", topic, clientid);
-    sprintf(buff, "Subscribing to topic %s for client %s using QOS %d\n", topic, clientid, qos);
-    ATLAS_LOGGER_DEBUG(buff);	
-}
 
-void connlost(void *context, char *cause)
-{
-    char buff[ATLAS_DATA_PLANE_BUFFER_LEN];
-    sprintf(buff, "Connection lost, cause: %s.", cause);
+    char *buff = malloc(ATLAS_DATA_PLANE_BUFFER_LEN + 1);
+    snprintf(buff, ATLAS_DATA_PLANE_BUFFER_LEN, "Subscribing to topic %s for client %s using QOS %d\n", topic, clientid, qos);
+    
     ATLAS_LOGGER_DEBUG(buff);
+    
+    free(buff);
 }
 
-void delivered(void *context, MQTTClient_deliveryToken dt)
+
+void 
+connlost(void *context, char *cause)
+{
+    char *buff = malloc(ATLAS_DATA_PLANE_BUFFER_LEN + 1);
+    snprintf(buff, ATLAS_DATA_PLANE_BUFFER_LEN, "Connection lost, cause: %s.", cause);
+
+    ATLAS_LOGGER_DEBUG(buff);
+
+    free(buff);
+}
+
+
+void 
+delivered(void *context, MQTTClient_deliveryToken dt)
 {
     deliveredtoken = dt;
 }
 
 
-int msgarrvd(void *context, char *topicName, int topicLen, 
-	     MQTTClient_message *message)
+int 
+msgarrvd(void *context, char *topicName, int topicLen, MQTTClient_message *message)
 {
     uint16_t response_time;
     char *payloadptr;
@@ -165,8 +181,7 @@ int msgarrvd(void *context, char *topicName, int topicLen,
     memcpy(payloadptr, message->payload, message->payloadlen);
     payloadptr[message->payloadlen] = 0;
 
-    /* If message is received on topic atlas/request/{feature}, then publish immediately a new value 
-    for {feature} */
+    /* If message is received on topic atlas/request/{feature}, then publish immediately a new value for {feature} */
     if (feature) {
         p = strstr(topicName, ATLAS_DATA_PLANE_REQUEST_REPUTATION_TOPIC);
         if (p && p == topicName) {
@@ -251,10 +266,8 @@ MQTTClient start_MQTTclient(char *topics, char* serverURI)
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
     int rc;
 
-    if(MQTTClient_create(&client, serverURI, clientid, MQTTCLIENT_PERSISTENCE_NONE, NULL) 
-		!= MQTTCLIENT_SUCCESS){
+    if(MQTTClient_create(&client, serverURI, clientid, MQTTCLIENT_PERSISTENCE_NONE, NULL) != MQTTCLIENT_SUCCESS) 
         ATLAS_LOGGER_ERROR("Failed to create MQTTclient.");
-    }
     
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 1;
@@ -280,16 +293,26 @@ MQTTClient start_MQTTclient(char *topics, char* serverURI)
     return client;
 }
 
-int verify_arguments(int argc, char** argv){
-    if(!(argc < 15 || strcmp(argv[1], "--publish") 
-                    || strcmp(argv[3], "--subscribe") 
-                    || strcmp(argv[5], "--serverURI")
-                    || strcmp(argv[7], "--clientid")
-                    || strcmp(argv[9], "--qos")
-                    || strcmp(argv[11], "--ppm")
-                    || strcmp(argv[13], "--maxlen")))
-        return 1; 
-    return 0;
+int parse_arguments(int argc, char** argv){
+    if ((argc < 18) || (strcmp(argv[1], "--publish") != 0) 
+                    || (strcmp(argv[3], "--subscribe") != 0) 
+                    || (strcmp(argv[5], "--serverURI") != 0)
+                    || (strcmp(argv[7], "--clientid") != 0)
+                    || (strcmp(argv[9], "--qos") != 0)
+                    || (strcmp(argv[11], "--ppm") != 0)
+                    || (strcmp(argv[13], "--maxlen") != 0)
+                    || (strcmp(argv[15], "--reputation") != 0))
+        return 0; 
+
+    clientid = strdup(argv[8]);
+    qos = atoi(argv[10]);
+    ppm = atoi(argv[12]);
+    maxlen = atoi(argv[14]);
+    feature = strdup(argv[16]);
+    if (strcmp(feature, "0") != 0)
+        flag_reputation = 1;
+
+    return 1;
 } 
 
 static void traffic_generator(MQTTClient atlasMQTTclient, char* str){
@@ -301,8 +324,7 @@ static void traffic_generator(MQTTClient atlasMQTTclient, char* str){
    
     
     char *p = strtok(str, ":");
-    while(p){
-        
+    while(p) {        
         publish_str = (publish_struct_t*)malloc(sizeof(publish_struct_t));
         publish_str->feature = strdup (p);
         p = strtok(NULL, ":");
@@ -326,35 +348,25 @@ static void traffic_generator(MQTTClient atlasMQTTclient, char* str){
 static void print_usage()
 {
     printf("Usage: ./data_plane --publish \"feature1:X1:Y1:Z1, feature2:X2:Y2:Z2\" --subscribe \"feature1, feature2\" --serverURI protocol://host:port --clientid <clientid> --qos <qos> --ppm <ppm> --maxlen <maxlen> --reputation <feature>\n");
-
 }
 
 int main(int argc, char *argv[])
-{
-    
-        if(verify_arguments(argc, argv)){
-            
-            clientid = strdup(argv[8]);
-            qos = atoi(argv[10]);
-            ppm = atoi(argv[12]);
-            maxlen = atoi(argv[14]);
-            atlas_init( "username", clientid, qos, ppm, maxlen);
-            /* start MQTT client */
-            atlasMQTTclient = start_MQTTclient(argv[4], argv[6]);
-        
-            traffic_generator(atlasMQTTclient, argv[2]);
+{    
+    if(parse_arguments(argc, argv)) {                
+        atlas_init( "username", clientid, qos, ppm, maxlen);
+        /* start MQTT client */
+        atlasMQTTclient = start_MQTTclient(argv[4], argv[6]);    
+        traffic_generator(atlasMQTTclient, argv[2]);
 
-             if (argc == 17) {
-                feature = strdup(argv[16]);
-                sleep(5);
-                atlas_reputation_request(feature, clientid_, sizeof(clientid_));
-                request_feature_values(feature);
-                flag_reputation = 1;
-            }
-        }  else{
-            print_usage();
-            return 0;
-        } 
+        if (flag_reputation) {
+            sleep(5);
+            atlas_reputation_request(feature, clientid_, sizeof(clientid_));
+            request_feature_values(feature);
+        }
+    } else {
+        print_usage();
+        return 0;
+    } 
 
     while(1);
     
