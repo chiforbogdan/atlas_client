@@ -26,7 +26,6 @@ static int payload_avg = 0;
 
 struct registration
 {
-    char* username;
     char* clientid;
     uint16_t qos;
     uint16_t packets_per_min;
@@ -73,10 +72,6 @@ send_registration_command()
     
     /* Create policy payload*/
     cmd_batch_inner = atlas_cmd_batch_new();
-    
-    /* Add username */
-    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_POLICY_USERNAME, strlen(client.username),
-                        (uint8_t *)client.username);
     
     /* Add client_id */
     atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID, strlen(client.clientid),
@@ -389,11 +384,9 @@ EXIT:
 }
 
 void 
-atlas_init(const char* user, const char* client_id,
-           uint16_t qos, uint16_t ppm, uint16_t pack_maxlen)
+atlas_init(const char* client_id, uint16_t qos, uint16_t ppm, uint16_t pack_maxlen)
 {
     /* Set application data */
-    client.username = strdup(user);
     client.clientid = strdup(client_id);
     client.qos = qos;
     client.packets_per_min = ppm; 

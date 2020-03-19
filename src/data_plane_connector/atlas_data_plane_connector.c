@@ -29,23 +29,12 @@
 
 static int connected_socket = -1;
 
-static char *username;
 static char *clientid;
 static uint16_t policy_qos;
 static uint16_t policy_packets_per_min;
 static uint16_t policy_packets_maxlen;
 static uint16_t packets_per_min;
 static uint16_t packets_avg;
-
-static void set_username(const uint8_t *user, uint16_t length)
-{
-    if (username)
-        free(username);
-
-    username = (char *) malloc(length + 1);
-    memcpy(username, user, length);
-    username[length] = 0;
-}
 
 static void set_clientid(const uint8_t *id, uint16_t length)
 {
@@ -403,9 +392,7 @@ atlas_data_plane_parse_policy(const uint8_t *buf, uint16_t buf_len)
 
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
     while (cmd) {
-        if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_USERNAME) {
-            set_username(cmd->value, cmd->length);
-        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID) {
+        if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID) {
             set_clientid(cmd->value, cmd->length);
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_QOS ) {
             set_policy_qos(cmd->value);

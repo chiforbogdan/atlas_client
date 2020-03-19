@@ -14,7 +14,7 @@ typedef struct feedback_struct {
 } feedback_struct_t;
 
 
-void atlas_init(const char* user, const char* client_id, uint16_t qos, uint16_t ppm, uint16_t pack_maxlen);
+void atlas_init(const char* client_id, uint16_t qos, uint16_t ppm, uint16_t pack_maxlen);
 
 void atlas_pkt_received(int payload);
 
