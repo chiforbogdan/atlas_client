@@ -317,7 +317,16 @@ parse_arguments(int argc, char** argv)
 static void
 print_usage()
 {
-    printf("Usage: ./data_plane --publish \"feature1:X1:Y1:Z1, feature2:X2:Y2:Z2\" --subscribe \"feature1, feature2\" --serverURI protocol://host:port --clientid <clientid> --qos <qos> --ppm <ppm> --maxlen <maxlen> --reputation <feature>\n");
+    printf("Usage: ./data_plane");
+    printf(" --publish \"<sensor feature>:<publish rate in seconds>:<target value>:<deviation>\"");
+    printf(" --subscribe \"<sensor feature1>, <sensor feature2>\"");
+    printf(" --serverURI protocol://host:port");
+    printf(" --clientid <clientid>");
+    printf(" --qos <qos>");
+    printf(" --ppm <ppm>");
+    printf(" --maxlen <maxlen>");
+    printf(" --reputation \"<sensor feature>:<query rate in seconds>:<target value>:<window size in seconds>\"");
+    printf("\n");
 }
 
 int main(int argc, char *argv[])
