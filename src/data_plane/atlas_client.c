@@ -15,22 +15,26 @@
 #define SLEEPTIME (60)
 #define ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN (2048)
 #define ATLAS_CLIENT_DATA_PLANE_SOCKET_READ_TIMEOUT_SEC (5)
+#define ATLAS_CLIENT_DATA_PLANE_FEEDBACKS_SCORE_MAX (100)
+
+typedef struct client_info
+{
+    /* Firewall QoS value */
+    uint16_t qos;
+    /* Firewall packets per minute value */
+    uint16_t packets_per_min;
+    /* Firewall packet max length value */
+    uint16_t packets_maxlen;
+} client_info_t;
 
 static volatile int fd = -1;
 static struct sockaddr_un addr;
 static pthread_mutex_t mutex;
 static pthread_t init_t;
-static int payload_samples = 0;
-static int payload_total = 0;
-static int payload_avg = 0;
-
-struct registration
-{
-    char* clientid;
-    uint16_t qos;
-    uint16_t packets_per_min;
-    uint16_t packets_maxlen;
-} client;
+static int payload_samples;
+static int payload_total;
+static int payload_avg;
+static client_info_t client;
 
 static void *register_to_atlas_client();
 static void send_registration_command();
@@ -43,12 +47,6 @@ static void*
 register_to_atlas_client()
 {
     ATLAS_LOGGER_DEBUG("DP: Register to atlas_client");
-
-    memset(&addr, 0, sizeof(addr));
-    addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, ATLAS_DATA_PLANE_UNIX_SOCKET_PATH, sizeof(addr.sun_path) - 1);
-
-    socket_connect();
     
     while(1) {
         
@@ -58,6 +56,64 @@ register_to_atlas_client()
     }
 
     return NULL;
+}
+
+static atlas_status_t
+send_identity_command(char **identity)
+{
+    atlas_cmd_batch_t *cmd_batch;
+    uint8_t buf[ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN];
+    uint8_t *cmd_buf = NULL;
+    uint16_t cmd_len = 0;
+    const atlas_cmd_t *cmd;
+    int bytes;
+    atlas_status_t status = ATLAS_OK;
+     
+    /* Create identity payload*/
+    cmd_batch = atlas_cmd_batch_new();
+    
+    /* Add client_id */
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_GET_IDENTITY, 0, NULL);
+    atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
+    
+    /* Send data to atlas_client */
+    write_to_socket_retry(cmd_buf, cmd_len);
+    
+    atlas_cmd_batch_free(cmd_batch);
+    cmd_batch = NULL;
+
+    /* Read command from client */
+    bytes = read(fd, buf, sizeof(buf));
+    if (bytes <= 0) {
+        ATLAS_LOGGER_ERROR("Error when reading identity");
+        status = ATLAS_SOCKET_ERROR;
+        goto EXIT;
+    }
+
+    cmd_batch = atlas_cmd_batch_new();
+    
+    status = atlas_cmd_batch_set_raw(cmd_batch, buf, bytes);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Corrupted command from atlas_client");
+        printf("Corrupted command from atlas_client\n");
+        goto EXIT;
+    }
+
+    cmd = atlas_cmd_batch_get(cmd_batch, NULL);
+    *identity = NULL;
+    while (cmd) {
+        if (cmd->type == ATLAS_CMD_DATA_PLANE_IDENTITY) {
+            *identity = (char *) calloc(1, cmd->length + 1);
+            memcpy(*identity, cmd->value, cmd->length);
+            goto EXIT;
+        }
+        cmd = atlas_cmd_batch_get(cmd_batch, cmd);
+    }
+
+EXIT:
+    atlas_cmd_batch_free(cmd_batch);
+
+    return status;
 }
 
 static void 
@@ -73,10 +129,6 @@ send_registration_command()
     /* Create policy payload*/
     cmd_batch_inner = atlas_cmd_batch_new();
     
-    /* Add client_id */
-    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID, strlen(client.clientid),
-                        (uint8_t *)client.clientid);
-                        
     /* Add policy qos */
     atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_POLICY_QOS, 
                         sizeof(client.qos), (uint8_t *)&client.qos);
@@ -151,8 +203,6 @@ socket_connect()
 
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 
-    printf("Connect again\n");
-
     while(rc) {
         rc = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
         if (!rc) {
@@ -190,25 +240,19 @@ write_to_socket(const uint8_t* cmd_buf, uint16_t cmd_len)
 }	
 
 void 
-atlas_pkt_received(int payload)
+atlas_pkt_received(int payload_len)
 {
     pthread_mutex_lock(&mutex);
     
     payload_samples++;
-    payload_total += payload;
+    payload_total += payload_len;
     payload_avg = payload_total / payload_samples;
 
     pthread_mutex_unlock(&mutex);
 }
 
-static uint16_t
-compute_feedback(int tmp)
-{
-    return 1;
-}
-
-atlas_status_t
-send_feedback_command(feedback_struct_t *feedback)
+static atlas_status_t
+send_feedback_command(atlas_feedback_t *feedback)
 {
     atlas_cmd_batch_t *cmd_batch_inner;
     atlas_cmd_batch_t *cmd_batch_outer;
@@ -216,32 +260,29 @@ send_feedback_command(feedback_struct_t *feedback)
     uint16_t cmd_inner_len = 0;
     uint8_t *cmd_buf_outer = NULL;
     uint16_t cmd_outer_len = 0;
-    const atlas_cmd_t *cmd;
-    uint8_t buf[ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN];
-    atlas_status_t status = ATLAS_OK;
     int bytes;
     uint16_t tmp;
+    atlas_status_t status = ATLAS_OK;
 
-    //tmp = compute_feedback(feedback->feature_value);
-    
-    /* Create feedback payload*/
+    /* Create feedback payload */
     cmd_batch_inner = atlas_cmd_batch_new();
 
-    /* Add clientID */
-    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_CLIENTID, strlen(feedback->clientID),
-                        (uint8_t *)feedback->clientID);
-    
-    /* Add feature */
-    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_FEATURE, strlen(feedback->feature),
-                        (uint8_t *)feedback->feature);
-                        
-    /* Add feedback value */
-    tmp = htons(compute_feedback(feedback->feature_value));
-    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE, sizeof(tmp),
-                         (uint8_t *)&tmp);
+    /* Add identity */
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_IDENTITY, strlen(feedback->identity),
+                        (uint8_t *)feedback->identity);
 
-    /* Add response time */
-    tmp = htons(feedback->reponse_time);
+    /* Add sensor type */
+    tmp = htons(feedback->sensor_type);
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_SENSOR_TYPE, sizeof(tmp),
+                        (uint8_t *)&tmp);
+                        
+    /* Add sensor feedback value */
+    tmp = htons(feedback->sensor_score);
+    atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_SENSOR, sizeof(tmp),
+                        (uint8_t *)&tmp);
+
+    /* Add response time feedback value */
+    tmp = htons(feedback->time_score);
     atlas_cmd_batch_add(cmd_batch_inner, ATLAS_CMD_DATA_PLANE_FEEDBACK_RESPONSE_TIME, sizeof(tmp), 
                         (uint8_t *)&tmp);
 
@@ -249,92 +290,72 @@ send_feedback_command(feedback_struct_t *feedback)
 
     cmd_batch_outer = atlas_cmd_batch_new();
 
-    /* Add inner command: clientID, feature type, feedback value */
+    /* Add inner command: identity, sensor feedback score, response time feedback score  */
     atlas_cmd_batch_add(cmd_batch_outer, ATLAS_CMD_DATA_PLANE_FEEDBACK, cmd_inner_len, cmd_buf_inner);
     atlas_cmd_batch_get_buf(cmd_batch_outer, &cmd_buf_outer, &cmd_outer_len);
     
     /* Send data to atlas_client */
-    write_to_socket_retry(cmd_buf_outer, cmd_outer_len);
-    
+    bytes = write_to_socket(cmd_buf_outer, cmd_outer_len);
+    if (bytes != cmd_outer_len) {
+        ATLAS_LOGGER_ERROR("Error when sending feedback to atlas client");
+        status = ATLAS_GENERAL_ERR;
+    }
+
     atlas_cmd_batch_free(cmd_batch_inner);
     atlas_cmd_batch_free(cmd_batch_outer);
-
-    /* Read command from client */
-    bytes = read(fd, buf, sizeof(buf));
-    if (bytes <= 0) {
-        ATLAS_LOGGER_ERROR("Error when reading confirmation of receiving feedback");
-        status = ATLAS_SOCKET_ERROR;
-        goto EXIT;
-    }
-
-    cmd_batch_inner = atlas_cmd_batch_new();
-    
-    status = atlas_cmd_batch_set_raw(cmd_batch_inner, buf, bytes);
-    if (status != ATLAS_OK) {
-        ATLAS_LOGGER_ERROR("Corrupted command from atlas_client");
-        printf("Corrupted command from atlas_client\n");
-        goto EXIT;
-    }
-
-    cmd = atlas_cmd_batch_get(cmd_batch_inner, NULL);
-    while (cmd) {
-        if (cmd->type == ATLAS_CMD_DATA_PLANE_FEEDBACK_ERROR) {
-            ATLAS_LOGGER_ERROR("Error in sending the feedback to gateway");
-            printf("Error in sending the feedback to gateway\n");
-            status = ATLAS_GENERAL_ERR;
-            goto EXIT;
-        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_SUCCESSFULLY_DELIVERED) {
-            ATLAS_LOGGER_DEBUG("Feedback successfully delivered to gateway");
-            printf("Feedback successfully delivered to gateway\n");
-            goto EXIT;
-        }
-
-        cmd = atlas_cmd_batch_get(cmd_batch_inner, cmd);
-    }
-
-EXIT:
-    atlas_cmd_batch_free(cmd_batch_inner);
 
     return status;
 }
 
-
-void 
-init_feedback_command(feedback_struct_t *feedback_entry)
+atlas_status_t
+atlas_reputation_feedback(atlas_feedback_t *feedback, size_t feedback_len)
 {
-    feedback_struct_t *p;
-    p = feedback_entry;
-    while (p) {
-        send_feedback_command(p);
-        p = p->next;
-    }
+    int i;
+
+    if (!feedback || !feedback_len)
+        return ATLAS_INVALID_INPUT;   
+   
+    /* Validate feedback */
+    for (i = 0; i < feedback_len; i++) {
+        if (feedback[i].sensor_score > ATLAS_CLIENT_DATA_PLANE_FEEDBACKS_SCORE_MAX)
+            return ATLAS_INVALID_INPUT;
+        if (feedback[i].time_score > ATLAS_CLIENT_DATA_PLANE_FEEDBACKS_SCORE_MAX)
+            return ATLAS_INVALID_INPUT;
+        if (!feedback[i].identity)
+            return ATLAS_INVALID_INPUT;
+
+        /* Send feedback score */
+        send_feedback_command(feedback + i);
+   }
+    
+    return ATLAS_OK;
 }
 
-
 atlas_status_t 
-atlas_reputation_request(const char *feature, char *clientid, size_t clientid_len)
+atlas_reputation_request(atlas_sensor_t sensor_type, char **identity)
 {
     atlas_cmd_batch_t *cmd_batch = NULL;
     uint8_t *cmd_buf = NULL;
     uint16_t cmd_len = 0;
     const atlas_cmd_t *cmd;
     uint8_t buf[ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN];
+    uint16_t tmp;
     atlas_status_t status = ATLAS_OK;
     int bytes;
 
-    if (!feature || !clientid || !clientid_len)
+    if (!identity)
         return ATLAS_INVALID_INPUT; 
    
     cmd_batch = atlas_cmd_batch_new();
     
      /* Add feature */
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION, strlen(feature),
-                        (uint8_t *)feature);
+    tmp = htons(sensor_type);
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION, sizeof(tmp),
+                        (uint8_t *)&tmp);
     
     atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-    sprintf((char*)buf, "Request clientID with best reputation for feature %s.", feature);
+    sprintf((char*)buf, "Request identity with best reputation for sensor type %d", sensor_type);
     ATLAS_LOGGER_DEBUG((char*)buf);
-    printf("%s\n", buf);
     
     bytes = write_to_socket(cmd_buf, cmd_len);
     if (bytes != cmd_len) {
@@ -365,11 +386,11 @@ atlas_reputation_request(const char *feature, char *clientid, size_t clientid_le
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
     while (cmd) {
         if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION) {            
-            memset(clientid, 0, clientid_len);
-            memcpy(clientid, cmd->value, cmd->length > clientid_len - 1 ? clientid_len - 1 : cmd->length); 
+            *identity = (char *) calloc(1, cmd->length + 1);
+            memcpy(*identity, cmd->value, cmd->length); 
             goto EXIT;
         } else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_ERROR) {
-            ATLAS_LOGGER_ERROR("No clientID received.");
+            ATLAS_LOGGER_ERROR("No identity with best reputation");
             status = ATLAS_GENERAL_ERR;
             goto EXIT;
         }
@@ -383,18 +404,37 @@ EXIT:
     return status;
 }
 
-void 
-atlas_init(const char* client_id, uint16_t qos, uint16_t ppm, uint16_t pack_maxlen)
+atlas_status_t
+atlas_init(uint16_t qos, uint16_t ppm, uint16_t pack_maxlen, char **identity)
 {
+    atlas_status_t status;
+
+    if (!identity)
+        return ATLAS_INVALID_INPUT;
+
     /* Set application data */
-    client.clientid = strdup(client_id);
     client.qos = qos;
     client.packets_per_min = ppm; 
     client.packets_maxlen = pack_maxlen; 
 
-    /* Init mutexes */
+    /* Init mutex */
     pthread_mutex_init(&mutex, NULL);
+
+    /* Set socket info */
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, ATLAS_DATA_PLANE_UNIX_SOCKET_PATH, sizeof(addr.sun_path) - 1);
+
+    /* Connect to atlas client */
+    socket_connect();
+
+    /* Get identity from atlas client */
+    status = send_identity_command(identity);
+    if (status != ATLAS_OK)
+        return status;
 
     /* Create ATLAS background client communication thread*/
     pthread_create(&init_t, NULL, &register_to_atlas_client, NULL);
+
+    return ATLAS_OK;
 }

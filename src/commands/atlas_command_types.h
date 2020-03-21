@@ -82,14 +82,14 @@ typedef enum _atlas_cmd_type
 
     /* Command types shared with the data plane agent */
 
-    /* Policy command: payload is ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID,
+    /* Policy command: payload is ATLAS_CMD_DATA_PLANE_POLICY_QOS,
      * ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE,
      * ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_MAXLEN */
     ATLAS_CMD_DATA_PLANE_POLICY = 1000,
-    
-    /* ClientID command: payload is the client id */
+
+    // TODO remove this
     ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID,
-    
+
      /* Policy command: payload is the policy qos value */
     ATLAS_CMD_DATA_PLANE_POLICY_QOS,
     
@@ -105,34 +105,36 @@ typedef enum _atlas_cmd_type
     /* Packets average command: payload is the average length of received packets*/
     ATLAS_CMD_DATA_PLANE_PACKETS_AVG,
 
+    /* Get identity comman: payload is empty */
+    ATLAS_CMD_DATA_PLANE_GET_IDENTITY,
+    
+    /* Identity command: payload is a string containing the device identity */
+    ATLAS_CMD_DATA_PLANE_IDENTITY,
+
     /* Feature reputation request command: payload is the feature for which the data_plane 
      * requests the reputation value*/
     ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION = 1500,
 
-    /* Feedback command: payload is ATLAS_CMD_DATA_PLANE_FEEDBACK_CLIENTID,
-     * ATLAS_CMD_DATA_PLANE_FEEDBACK_FEATURE, ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE 
-       ATLAS_CMD_DATA_PLANE_FEEDBACK_RESPONSE_TIME*/
+    /* Feedback command: payload is ATLAS_CMD_DATA_PLANE_FEEDBACK_IDENTITY,
+     * ATLAS_CMD_DATA_PLANE_FEEDBACK_SENSOR_TYPE,
+     * ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE 
+     * ATLAS_CMD_DATA_PLANE_FEEDBACK_RESPONSE_TIME*/
     ATLAS_CMD_DATA_PLANE_FEEDBACK,
-
-    /* ClientID command: payload is the client id */
-    ATLAS_CMD_DATA_PLANE_FEEDBACK_CLIENTID,
+   
+    /* Feedback identity: payload is the identity for which the feedback is delivered */
+    ATLAS_CMD_DATA_PLANE_FEEDBACK_IDENTITY,
     
-    /* Feature command: payload is the feature type */
-    ATLAS_CMD_DATA_PLANE_FEEDBACK_FEATURE,
+    /* Sensor type command: payload is the sensor type */
+    ATLAS_CMD_DATA_PLANE_FEEDBACK_SENSOR_TYPE,
 
-    /* Value command: payload is the feedback value */
-    ATLAS_CMD_DATA_PLANE_FEEDBACK_VALUE,
+    /* Sensor feedback command: payload is the feedback score */
+    ATLAS_CMD_DATA_PLANE_FEEDBACK_SENSOR,
 
-    /* Response time command: payload is the client response time  
-       for which the feedback is delivered*/
+    /* Response time command: payload is the feedback score */
     ATLAS_CMD_DATA_PLANE_FEEDBACK_RESPONSE_TIME,
 
+    // TODO rename remove this....
     ATLAS_CMD_DATA_PLANE_FEATURE_ERROR,
-
-    ATLAS_CMD_DATA_PLANE_FEEDBACK_ERROR,
-
-    ATLAS_CMD_DATA_PLANE_FEATURE_SUCCESSFULLY_DELIVERED, 
-
 } atlas_cmd_type_t;
 
 #endif /* __ATLAS_COMMAND_TYPE_H__ */

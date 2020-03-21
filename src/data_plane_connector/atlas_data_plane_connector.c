@@ -28,7 +28,6 @@
 #define ATLAS_CLIENT_FEEDBACK_COAP_PATH   "gateway/reputation/feedback"
 
 static int connected_socket = -1;
-
 static char *clientid;
 static uint16_t policy_qos;
 static uint16_t policy_packets_per_min;
@@ -185,7 +184,6 @@ atlas_reputation_resp_parse(const uint8_t *buf, uint16_t buf_len)
 
             /* Send reputation value to data plane */            
             int ret = write(connected_socket, cmd_buf, cmd_len);
-            //if (write(fd, cmd_buf, cmd_len) != cmd_len) {
             if (ret != cmd_len) {
                 ATLAS_LOGGER_ERROR("Error writing to socket the reputation value.");
                 printf("ERRRRRR % d %d\n", ret, errno);
@@ -284,52 +282,16 @@ static void
 feedback_callback(const char *uri, atlas_coap_response_t resp_status,
                             const uint8_t *resp_payload, size_t resp_payload_len)
 {
-    atlas_cmd_batch_t *cmd_batch;
-    uint8_t *cmd_buf = NULL;
-    uint16_t cmd_len = 0;
-
     ATLAS_LOGGER_DEBUG("Feedback callback executed");
     printf("Feedback callback executed\n");
 
     if (resp_status != ATLAS_COAP_RESP_OK) {
         ATLAS_LOGGER_ERROR("Error in sending the feedback");
         printf("Error in sending the feedback\n");
-
-        /* Send error command to data_plane */
-        cmd_batch = atlas_cmd_batch_new();
-        
-        /* Add error command */
-        atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_FEEDBACK_ERROR, 0, NULL);
-        atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-
-        /* Send error to data plane */            
-        if (write(connected_socket, cmd_buf, cmd_len) != cmd_len){                
-            ATLAS_LOGGER_ERROR("Error writing to socket the feedback value.");
-            printf("Error writing to socket the feedback value.\n");
-        }
-        
-        atlas_cmd_batch_free(cmd_batch);
-
-        return;
+    } else {
+        ATLAS_LOGGER_INFO("Sending feedback to gateway is COMPLETED!");
+        printf("Sending feedback to gateway is COMPLETED!\n");
     }
-    
-    /* Send feedback successfully delivered command to data_plane */
-    cmd_batch = atlas_cmd_batch_new();
-    
-    /* Add successful command */
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_FEATURE_SUCCESSFULLY_DELIVERED, 0, NULL);
-    atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-
-    /* Send command to data plane */            
-    if (write(connected_socket, cmd_buf, cmd_len) != cmd_len){                
-        ATLAS_LOGGER_ERROR("Error in sending feedback successfully delivered command.");
-        printf("Error in sending feedback successfully delivered command.\n");
-    }
-    
-    atlas_cmd_batch_free(cmd_batch);
-
-    ATLAS_LOGGER_INFO("Sending feedback to gateway is COMPLETED!");
-    printf("Sending feedback to gateway is COMPLETED!\n");
 }
 
 static void
@@ -369,6 +331,7 @@ atlas_feature_feedback_handle(const uint8_t *feedback, uint16_t length)
 
     atlas_cmd_batch_free(cmd_batch);
 }
+
 static void
 atlas_data_plane_parse_policy(const uint8_t *buf, uint16_t buf_len)
 {
@@ -411,6 +374,32 @@ atlas_data_plane_parse_policy(const uint8_t *buf, uint16_t buf_len)
 }
 
 static void
+atlas_data_plane_identity()
+{
+    atlas_cmd_batch_t *cmd_batch;
+    uint8_t *cmd_buf = NULL;
+    uint16_t cmd_len = 0;
+    const char *identity = atlas_identity_get();
+    int ret;
+
+    ATLAS_LOGGER_INFO("Send identity to data plane");
+
+    cmd_batch = atlas_cmd_batch_new();
+    
+    /* Add identity */
+    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_IDENTITY, strlen(identity),
+                        (const uint8_t *)identity);
+    atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
+             
+    /* Send identity to data plane */
+    ret = write(connected_socket, cmd_buf, cmd_len);
+    if (ret != cmd_len)
+        ATLAS_LOGGER_ERROR("Error writing to socket the reputation value.");
+    
+    atlas_cmd_batch_free(cmd_batch);
+}
+
+static void
 atlas_data_plane_read_cb(int fd)
 {
     uint8_t buf[ATLAS_CLIENT_DATA_PLANE_BUFFER_LEN];
@@ -437,17 +426,18 @@ atlas_data_plane_read_cb(int fd)
 
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
     while (cmd) {
-        if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY) {
+        if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY)
             atlas_data_plane_parse_policy(cmd->value, cmd->length);
-        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE ) {
+        else if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE )
             set_packets_per_min(cmd->value);
-        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_AVG) {
+        else if (cmd->type == ATLAS_CMD_DATA_PLANE_PACKETS_AVG)
             set_packets_avg(cmd->value);
-        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION){
+        else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION)
             atlas_feature_reputation_handle(cmd->value, cmd->length);
-        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEEDBACK){
+        else if (cmd->type == ATLAS_CMD_DATA_PLANE_FEEDBACK)
             atlas_feature_feedback_handle(cmd->value, cmd->length);
-        }
+        else if (cmd->type == ATLAS_CMD_DATA_PLANE_GET_IDENTITY)
+            atlas_data_plane_identity();
 
         cmd = atlas_cmd_batch_get(cmd_batch, cmd);
     }
