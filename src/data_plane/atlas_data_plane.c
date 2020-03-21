@@ -246,7 +246,7 @@ handle_data(const char *feature, const char *payload, size_t payload_len)
         return;
     value = atof(p);
 
-    printf("RX: received value %f for feature %s\n", value, feature);
+    printf("RX: received value %f for feature %s from %s\n", value, feature, clientid);
 
     /* Verify if feedback window is active */
     pthread_mutex_lock(&rep_info.lock);
@@ -261,7 +261,7 @@ handle_data(const char *feature, const char *payload, size_t payload_len)
     /* If this identity delivered feedback in this window, then keep only the first entry */
     for (i = 0; i < rep_info.feedback_length; i++)
         if (!strcmp(clientid, rep_info.feedback[i].identity)) {
-            printf("Discarding value for client with identity %s (device has already sent a sample)\n", clientid);
+            printf("EVENT: Discarding value for client with identity %s (device has already sent a sample)\n", clientid);
             goto EXIT;
         }
 
@@ -435,10 +435,10 @@ reputation_query_task(void *arg)
     while(1) {
         identity = NULL;
         if (atlas_reputation_request(ATLAS_SENSOR_TEMPERATURE, &identity) != ATLAS_OK)
-            printf("Error in getting an identity with best reputation\n");
+            printf("EVENT: Error in getting an identity with best reputation\n");
 
         if (identity)
-            printf("Identity with the best reputation is %s\n", identity);
+            printf("EVENT: Identity with the best reputation is %s\n", identity);
 
         request_reputation_val(rep_info.feature);
 
@@ -447,7 +447,7 @@ reputation_query_task(void *arg)
         rep_info.feedback_active = 1;
         pthread_mutex_unlock(&rep_info.lock);
         
-        printf("Start reputation feedback window\n");
+        printf("EVENT: Start reputation feedback window\n");
         rep_info.feedback_length = 0;
         clock_gettime(CLOCK_REALTIME, &rep_info.window_start);
  
@@ -459,7 +459,7 @@ reputation_query_task(void *arg)
         rep_info.feedback_active = 0;
         pthread_mutex_unlock(&rep_info.lock);
 
-        printf("Stop reputation feedback window\n");
+        printf("EVENT: Stop reputation feedback window\n");
         
         /* If there is no target value, compute the average sensor feedback */
         if (rep_info.target_value == -1 && rep_info.feedback_length) {
