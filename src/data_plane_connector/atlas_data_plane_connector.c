@@ -26,24 +26,15 @@
 #define ATLAS_CLIENT_POLICY_COAP_PATH   "gateway/policy"
 #define ATLAS_CLIENT_FEATURE_COAP_PATH   "gateway/reputation/feature"
 #define ATLAS_CLIENT_FEEDBACK_COAP_PATH   "gateway/reputation/feedback"
+#define ATLAS_CLIENT_POLICY_ACTIVE (1)
 
 static int connected_socket = -1;
-static char *clientid;
 static uint16_t policy_qos;
 static uint16_t policy_packets_per_min;
 static uint16_t policy_packets_maxlen;
+static uint8_t active_policy;
 static uint16_t packets_per_min;
 static uint16_t packets_avg;
-
-static void set_clientid(const uint8_t *id, uint16_t length)
-{
-    if (clientid)
-        free(clientid);
-
-    clientid = (char *) malloc(length + 1);
-    memcpy(clientid, id, length);
-    clientid[length] = 0;
-}
 
 static void set_policy_qos(const uint8_t* qos)
 {
@@ -110,18 +101,14 @@ send_policy_command()
     uint8_t *cmd_buf = NULL;
     uint16_t cmd_len = 0;
     uint16_t tmp;
-
     char uri[ATLAS_URI_MAX_LEN] = { 0 };
 
-    if (!clientid) {
-        ATLAS_LOGGER_DEBUG("Clientid value is null, thus the firewall policy cannot be sent to gateway");
+    if (active_policy != ATLAS_CLIENT_POLICY_ACTIVE) {
+        ATLAS_LOGGER_ERROR("Cannot send empty firewall policy to gateway");
         return;
     }
 
     cmd_batch = atlas_cmd_batch_new();
-
-    /* Add MQTT clientID */
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID, strlen(clientid), (uint8_t*) clientid);
     
      /* Add policy qos value */
     tmp = htons(policy_qos);
@@ -355,21 +342,19 @@ atlas_data_plane_parse_policy(const uint8_t *buf, uint16_t buf_len)
 
     cmd = atlas_cmd_batch_get(cmd_batch, NULL);
     while (cmd) {
-        if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID) {
-            set_clientid(cmd->value, cmd->length);
-        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_QOS ) {
+        if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_QOS )
             set_policy_qos(cmd->value);
-        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE ) {
+        else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE )
             set_policy_packets_per_min(cmd->value);
-        } else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_MAXLEN ) {
+        else if (cmd->type == ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_MAXLEN )
             set_policy_packets_maxlen(cmd->value);
-	}
 
         cmd = atlas_cmd_batch_get(cmd_batch, cmd);
     }
 
     atlas_cmd_batch_free(cmd_batch);
 
+    active_policy = ATLAS_CLIENT_POLICY_ACTIVE;
     send_policy_command();
 }
 

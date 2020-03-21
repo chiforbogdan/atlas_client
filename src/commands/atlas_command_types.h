@@ -87,18 +87,6 @@ typedef enum _atlas_cmd_type
      * ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_MAXLEN */
     ATLAS_CMD_DATA_PLANE_POLICY = 1000,
 
-    // TODO remove this
-    ATLAS_CMD_DATA_PLANE_POLICY_CLIENTID,
-
-     /* Policy command: payload is the policy qos value */
-    ATLAS_CMD_DATA_PLANE_POLICY_QOS,
-    
-    /* Policy command: payload is the policy packets_per_minute value */
-    ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE,
-    
-    /* Policy command: payload is the policy packets_max_length value */
-    ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_MAXLEN,
-    
     /* Packets per minute command: payload is the number of received packets per minute */
     ATLAS_CMD_DATA_PLANE_PACKETS_PER_MINUTE,
     
@@ -110,7 +98,18 @@ typedef enum _atlas_cmd_type
     
     /* Identity command: payload is a string containing the device identity */
     ATLAS_CMD_DATA_PLANE_IDENTITY,
+    
+    /* Command types shared with the data plane agent, client and gateway */
 
+    /* Policy command: payload is the policy qos value */
+    ATLAS_CMD_DATA_PLANE_POLICY_QOS = 1100,
+    
+    /* Policy command: payload is the policy packets_per_minute value */
+    ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_PER_MINUTE,
+    
+    /* Policy command: payload is the policy packets_max_length value */
+    ATLAS_CMD_DATA_PLANE_POLICY_PACKETS_MAXLEN,
+ 
     /* Feature reputation request command: payload is the feature for which the data_plane 
      * requests the reputation value*/
     ATLAS_CMD_DATA_PLANE_FEATURE_REPUTATION = 1500,
