@@ -77,6 +77,8 @@ static MQTTClient atlasMQTTclient;
 static publish_info_t publish_str[ATLAS_PUBLISH_FEATURES_MAX];
 /* Reputation info */
 static reputation_t rep_info;
+/* ATLAS Identity */
+static char *identity;
 
 static float
 random_number_generator(int base_value, int deviation) 
@@ -103,7 +105,7 @@ publish_feature_value(publish_info_t *pub_info)
     /* If packet length is default, then deliver the simulated value, otherwise deliver the generate value  */
     if (!pub_info->packet_length) {
         value = random_number_generator(pub_info->base_value, pub_info->deviation);
-        sprintf(pub_info->publish_msg, "%f", value);
+        sprintf(pub_info->publish_msg, "%s:%f", identity, value);
         len = strlen(pub_info->publish_msg);
     } else {
 	memset(pub_info->publish_msg, '0', pub_info->packet_length);
@@ -558,7 +560,6 @@ parse_arguments(int argc, char** argv)
     char *subscribe_arg = NULL;
     char *hostname_arg = NULL;
     char *reputation_arg = NULL;
-    char *clientid = NULL;
     int qos = -1;
     int ppm = -1;
     int maxlen = -1;
@@ -613,22 +614,20 @@ parse_arguments(int argc, char** argv)
     }
 
     /* Set firewall rule and init connection with atlas client */
-    if (atlas_init(qos, ppm, maxlen, &clientid) != ATLAS_OK) {
+    if (atlas_init(qos, ppm, maxlen, &identity) != ATLAS_OK) {
         printf("Error in initializing connection with ATLAS client\n");
         exit(1);
     }
     
     /* start MQTT client */
-    atlasMQTTclient = start_MQTTclient(clientid, hostname_arg);    
+    atlasMQTTclient = start_MQTTclient(identity, hostname_arg);    
     /* Setup traffic generator */
-    traffic_generator(clientid, publish_arg);
+    traffic_generator(identity, publish_arg);
     /* Subscribe to consume topics */
-    subscribe_topics(clientid, subscribe_arg, qos);
+    subscribe_topics(identity, subscribe_arg, qos);
     /* Set reputation */
     if (reputation_arg)
         set_reputation(reputation_arg);
-
-    free(clientid);
 } 
 
 int main(int argc, char *argv[])
