@@ -602,7 +602,7 @@ parse_arguments(int argc, char** argv)
 	}
     }
 
-    if (!publish_arg || !subscribe_arg || !hostname_arg || !reputation_arg) {
+    if (!publish_arg || !subscribe_arg || !hostname_arg) {
         print_usage();
 	exit(1);
     }
@@ -625,7 +625,8 @@ parse_arguments(int argc, char** argv)
     /* Subscribe to consume topics */
     subscribe_topics(clientid, subscribe_arg, qos);
     /* Set reputation */
-    set_reputation(reputation_arg);
+    if (reputation_arg)
+        set_reputation(reputation_arg);
 
     free(clientid);
 } 
