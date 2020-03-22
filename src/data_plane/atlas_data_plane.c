@@ -83,7 +83,7 @@ static char *identity;
 static float
 random_number_generator(int base_value, int deviation) 
 {
-    int randInterval = (2 * deviation) + 1; //generate value only in the interval of -/+ deviation
+    int randInterval = 2 * deviation; //generate value only in the interval of -/+ deviation
     int lower = base_value - deviation; //limit the minimum value
     return (randInterval * ((float)random() / (float)RAND_MAX) + lower);
 }
