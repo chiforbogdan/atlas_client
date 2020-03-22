@@ -28,9 +28,9 @@ typedef struct publish_info
     /* Publish rate in seconds */
     int publish_rate;
     /* Base simulated feature value */
-    int base_value;
+    float base_value;
     /* Deviation from base value */
-    int deviation;
+    float deviation;
     /* QoS used when publishing the data */
     int qos;
     /* Packet length. If this value is non-zero a packet
@@ -81,10 +81,10 @@ static reputation_t rep_info;
 static char *identity;
 
 static float
-random_number_generator(int base_value, int deviation) 
+random_number_generator(float base_value, float deviation) 
 {
-    int randInterval = 2 * deviation; //generate value only in the interval of -/+ deviation
-    int lower = base_value - deviation; //limit the minimum value
+    float randInterval = 2 * deviation; //generate value only in the interval of -/+ deviation
+    float lower = base_value - deviation; //limit the minimum value
     return (randInterval * ((float)random() / (float)RAND_MAX) + lower);
 }
 
@@ -375,10 +375,10 @@ traffic_generator(char* clientid, char* publish_arg)
         publish_str[index].publish_rate = atoi(p);
         p = strtok(NULL, ":");
         /* Extract simulated base value */
-        publish_str[index].base_value = atoi(p);
+        publish_str[index].base_value = atof(p);
         p = strtok(NULL, ":");
         /* Extract simulated deviation value */
-        publish_str[index].deviation = atoi(p);
+        publish_str[index].deviation = atof(p);
         p = strtok(NULL, ":");
         /* Extract publish QoS value */
         publish_str[index].qos = atoi(p);
