@@ -9,7 +9,7 @@
 
 typedef enum
 {
-    ATLAS_SENSOR_TEMPERATURE = 0,
+    ATLAS_SENSOR_TEMPERATURE = 101,
 
 } atlas_sensor_t;
 
