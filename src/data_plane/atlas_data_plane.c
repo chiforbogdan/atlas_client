@@ -83,7 +83,6 @@ static char *identity;
 static float
 random_number_generator(int base_value, int deviation) 
 {
-    srand(time(0));
     int randInterval = (2 * deviation) + 1; //generate value only in the interval of -/+ deviation
     int lower = base_value - deviation; //limit the minimum value
     return (randInterval * ((float)random() / (float)RAND_MAX) + lower);
@@ -632,6 +631,8 @@ parse_arguments(int argc, char** argv)
 
 int main(int argc, char *argv[])
 { 
+    srand(time(0));
+    
     parse_arguments(argc, argv);
 
     while(getchar() != 'q');
