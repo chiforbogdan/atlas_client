@@ -30,6 +30,18 @@
 #define ATLAS_SYSINFO_LOAD5_PATH "gateway/telemetry/sysinfo/load5"
 #define ATLAS_SYSINFO_LOAD15_PATH "gateway/telemetry/sysinfo/load15"
 
+#define ATLAS_PUSH_ALERT_SYSINFO_PROCS_PATH "client/telemetry/sysinfo/procs/alerts/push"
+#define ATLAS_PUSH_ALERT_SYSINFO_UPTIME_PATH "client/telemetry/sysinfo/uptime/alerts/push"
+#define ATLAS_PUSH_ALERT_SYSINFO_FREERAM_PATH "client/telemetry/sysinfo/freeram/alerts/push"
+#define ATLAS_PUSH_ALERT_SYSINFO_SHAREDRAM_PATH "client/telemetry/sysinfo/sharedram/alerts/push"
+#define ATLAS_PUSH_ALERT_SYSINFO_BUFFERRAM_PATH "client/telemetry/sysinfo/bufferram/alerts/push"
+#define ATLAS_PUSH_ALERT_SYSINFO_TOTALSWAP_PATH "client/telemetry/sysinfo/totalswap/alerts/push"
+#define ATLAS_PUSH_ALERT_SYSINFO_FREESWAP_PATH "client/telemetry/sysinfo/freeswap/alerts/push"
+#define ATLAS_PUSH_ALERT_SYSINFO_LOAD1_PATH "client/telemetry/sysinfo/load1/alerts/push"
+#define ATLAS_PUSH_ALERT_SYSINFO_LOAD5_PATH "client/telemetry/sysinfo/load5/alerts/push"
+#define ATLAS_PUSH_ALERT_SYSINFO_LOAD15_PATH "client/telemetry/sysinfo/load15/alerts/push"
+
+#define ATLAS_THRESHOLD_ALERT_SYSINFO_PROCS_PATH "client/telemetry/sysinfo/procs/alerts/threshold"
 
 static uint16_t procs_threshold;
 
@@ -540,36 +552,14 @@ atlas_telemetry_payload_load15(uint8_t **payload, uint16_t *payload_len,
 }
 
 static atlas_coap_response_t
-atlas_push_alert_procs_cb(const char *uri_path, const uint8_t *req_payload, size_t req_payload_len,
-                          uint8_t **resp_payload, size_t *resp_payload_len)
+atlas_push_alert_cb(const char *uri_path, const uint8_t *req_payload, size_t req_payload_len,
+                    uint8_t **resp_payload, size_t *resp_payload_len)
 {
     atlas_status_t status;
     uint16_t push_rate;
     char uri[ATLAS_URI_MAX_LEN] = { 0 };
 
-    ATLAS_LOGGER_DEBUG("Telemetry sysinfo procs push alert end-point called");
-
-    status = atlas_alert_push_cmd_parse(req_payload, req_payload_len, &push_rate);
-    if (status != ATLAS_OK) {
-        ATLAS_LOGGER_DEBUG("Telemetry sysinfo procs push alert end-point encountered an error when parsing the command");
-        return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
-    }  
- 
-    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_PROCS_PATH, uri);
-    atlas_telemetry_push_set(uri, push_rate);
- 
-    return ATLAS_COAP_RESP_OK;
-}
-
-static atlas_coap_response_t
-atlas_push_alert_uptime_cb(const char *uri_path, const uint8_t *req_payload, size_t req_payload_len,
-                           uint8_t **resp_payload, size_t *resp_payload_len)
-{
-    atlas_status_t status;
-    uint16_t push_rate;
-    char uri[ATLAS_URI_MAX_LEN] = { 0 };
-
-    ATLAS_LOGGER_DEBUG("Telemetry sysinfo uptime push alert end-point called");
+    ATLAS_LOGGER_DEBUG("Telemetry sysinfo push alert end-point called");
 
     status = atlas_alert_push_cmd_parse(req_payload, req_payload_len, &push_rate);
     if (status != ATLAS_OK) {
@@ -577,7 +567,27 @@ atlas_push_alert_uptime_cb(const char *uri_path, const uint8_t *req_payload, siz
         return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
     }
 
-    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_UPTIME_PATH, uri);
+    if (!strcmp(uri_path, ATLAS_PUSH_ALERT_SYSINFO_PROCS_PATH))
+        atlas_cfg_coap_get_uri(ATLAS_SYSINFO_PROCS_PATH, uri);
+    else if (!strcmp(uri_path, ATLAS_PUSH_ALERT_SYSINFO_UPTIME_PATH))
+        atlas_cfg_coap_get_uri(ATLAS_SYSINFO_UPTIME_PATH, uri);
+    else if (!strcmp(uri_path, ATLAS_PUSH_ALERT_SYSINFO_FREERAM_PATH))
+        atlas_cfg_coap_get_uri(ATLAS_SYSINFO_FREERAM_PATH, uri);
+    else if (!strcmp(uri_path, ATLAS_PUSH_ALERT_SYSINFO_SHAREDRAM_PATH))
+        atlas_cfg_coap_get_uri(ATLAS_SYSINFO_SHAREDRAM_PATH, uri);
+    else if (!strcmp(uri_path, ATLAS_PUSH_ALERT_SYSINFO_BUFFERRAM_PATH))
+        atlas_cfg_coap_get_uri(ATLAS_SYSINFO_BUFFERRAM_PATH, uri);
+    else if (!strcmp(uri_path, ATLAS_PUSH_ALERT_SYSINFO_TOTALSWAP_PATH))
+        atlas_cfg_coap_get_uri(ATLAS_SYSINFO_TOTALSWAP_PATH, uri);
+    else if (!strcmp(uri_path, ATLAS_PUSH_ALERT_SYSINFO_FREESWAP_PATH))
+        atlas_cfg_coap_get_uri(ATLAS_SYSINFO_FREESWAP_PATH, uri);
+    else if (!strcmp(uri_path, ATLAS_PUSH_ALERT_SYSINFO_LOAD1_PATH))
+        atlas_cfg_coap_get_uri(ATLAS_SYSINFO_LOAD1_PATH, uri);
+    else if (!strcmp(uri_path, ATLAS_PUSH_ALERT_SYSINFO_LOAD5_PATH))
+        atlas_cfg_coap_get_uri(ATLAS_SYSINFO_LOAD5_PATH, uri);
+    else if (!strcmp(uri_path, ATLAS_PUSH_ALERT_SYSINFO_LOAD15_PATH))
+        atlas_cfg_coap_get_uri(ATLAS_SYSINFO_LOAD15_PATH, uri);
+
     atlas_telemetry_push_set(uri, push_rate);
  
     return ATLAS_COAP_RESP_OK;
@@ -668,22 +678,78 @@ atlas_telemetry_add_sysinfo()
     atlas_telemetry_add(uri, atlas_telemetry_payload_load15);
 
     /* Add sysinfo telemetry push alerts */
-    status = atlas_coap_server_add_resource("client/telemetry/sysinfo/procs/alerts/push", ATLAS_COAP_METHOD_PUT,
-                                            atlas_push_alert_procs_cb);
+    status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_PROCS_PATH, ATLAS_COAP_METHOD_PUT,
+                                            atlas_push_alert_cb);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Cannot install sysinfo procs push telemetry alert end-point");
         return;
     }
     
-    status = atlas_coap_server_add_resource("client/telemetry/sysinfo/uptime/alerts/push", ATLAS_COAP_METHOD_PUT,
-                                            atlas_push_alert_uptime_cb);
+    status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_UPTIME_PATH, ATLAS_COAP_METHOD_PUT,
+                                            atlas_push_alert_cb);
     if (status != ATLAS_OK) {
-        ATLAS_LOGGER_ERROR("Cannot install sysinfo procs push telemetry alert end-point");
+        ATLAS_LOGGER_ERROR("Cannot install sysinfo uptime push telemetry alert end-point");
         return;
     }
-    
+   
+   status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_FREERAM_PATH, ATLAS_COAP_METHOD_PUT,
+                                           atlas_push_alert_cb);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Cannot install sysinfo freeram push telemetry alert end-point");
+        return;
+    }
+
+    status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_SHAREDRAM_PATH, ATLAS_COAP_METHOD_PUT,
+                                            atlas_push_alert_cb);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Cannot install sysinfo sharedram push telemetry alert end-point");
+        return;
+    }
+
+    status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_BUFFERRAM_PATH, ATLAS_COAP_METHOD_PUT,
+                                            atlas_push_alert_cb);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Cannot install sysinfo bufferram push telemetry alert end-point");
+        return;
+    }
+
+    status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_TOTALSWAP_PATH, ATLAS_COAP_METHOD_PUT,
+                                            atlas_push_alert_cb);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Cannot install sysinfo totalswap push telemetry alert end-point");
+        return;
+    }
+
+   status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_FREESWAP_PATH, ATLAS_COAP_METHOD_PUT,
+                                           atlas_push_alert_cb);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Cannot install sysinfo freeswap push telemetry alert end-point");
+        return;
+    }
+
+   status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_LOAD1_PATH, ATLAS_COAP_METHOD_PUT,
+                                           atlas_push_alert_cb);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Cannot install sysinfo load1 push telemetry alert end-point");
+        return;
+    }
+
+   status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_LOAD5_PATH, ATLAS_COAP_METHOD_PUT,
+                                           atlas_push_alert_cb);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Cannot install sysinfo load5 push telemetry alert end-point");
+        return;
+    }
+   
+   status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_LOAD15_PATH, ATLAS_COAP_METHOD_PUT,
+                                           atlas_push_alert_cb);
+    if (status != ATLAS_OK) {
+        ATLAS_LOGGER_ERROR("Cannot install sysinfo load15 push telemetry alert end-point");
+        return;
+    }
+
     /* Add sysinfo telemetry threshold alerts */
-    status = atlas_coap_server_add_resource("client/telemetry/sysinfo/procs/alerts/threshold", ATLAS_COAP_METHOD_PUT,
+    status = atlas_coap_server_add_resource(ATLAS_THRESHOLD_ALERT_SYSINFO_PROCS_PATH, ATLAS_COAP_METHOD_PUT,
                                             atlas_threshold_alert_procs_cb);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Cannot install sysinfo procs threshold telemetry alert end-point");
