@@ -207,7 +207,7 @@ atlas_telemetry_payload_packets_avg(uint8_t **payload, uint16_t *payload_len,
 }
 
 void 
-atlas_telemetry_add_packets_info(){
+atlas_telemetry_add_packets_info() {
     
     atlas_status_t status;
     char uri[ATLAS_URI_MAX_LEN] = { 0 };

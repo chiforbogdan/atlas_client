@@ -51,19 +51,19 @@ static void set_policy_packets_maxlen(const uint8_t* pack_maxlen)
     memcpy(&policy_packets_maxlen, pack_maxlen, sizeof(policy_packets_maxlen));
 }
 
-static void set_packets_per_min(const uint8_t* ppm){
+static void set_packets_per_min(const uint8_t* ppm) {
     memcpy(&packets_per_min, ppm, sizeof(packets_per_min));
 }
 
-static void set_packets_avg(const uint8_t* pack_avg){
+static void set_packets_avg(const uint8_t* pack_avg) {
     memcpy(&packets_avg, pack_avg, sizeof(packets_avg));
 }
 
-uint16_t get_packets_per_min(){
+uint16_t get_packets_per_min() {
     return packets_per_min;
 }
 
-uint16_t get_packets_avg(){
+uint16_t get_packets_avg() {
     return packets_avg;
 }
 
@@ -171,10 +171,8 @@ atlas_reputation_resp_parse(const uint8_t *buf, uint16_t buf_len)
 
             /* Send reputation value to data plane */            
             int ret = write(connected_socket, cmd_buf, cmd_len);
-            if (ret != cmd_len) {
+            if (ret != cmd_len)
                 ATLAS_LOGGER_ERROR("Error writing to socket the reputation value.");
-                printf("ERRRRRR % d %d\n", ret, errno);
-            }
             
             atlas_cmd_batch_free(cmd_batch_send);
         }
@@ -197,11 +195,9 @@ feature_reputation_callback(const char *uri, atlas_coap_response_t resp_status,
     uint16_t cmd_len = 0;
 
     ATLAS_LOGGER_DEBUG("Feature reputation callback executed");
-    printf("Feature callback executed\n");
 
     if (resp_status != ATLAS_COAP_RESP_OK) {
         ATLAS_LOGGER_ERROR("Error in sending the feature request");
-        printf("Error in sending the feature request\n");
         
         /* Send feature reputation error to data plane */
         cmd_batch = atlas_cmd_batch_new();
@@ -211,10 +207,8 @@ feature_reputation_callback(const char *uri, atlas_coap_response_t resp_status,
         atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
 
         /* Send error to data plane */            
-        if (write(connected_socket, cmd_buf, cmd_len) != cmd_len){                
+        if (write(connected_socket, cmd_buf, cmd_len) != cmd_len) 
             ATLAS_LOGGER_ERROR("Error writing to socket the reputation value.");
-            printf("Error writing to socket the reputation value.\n");
-        }
         
         atlas_cmd_batch_free(cmd_batch);
 
@@ -224,7 +218,6 @@ feature_reputation_callback(const char *uri, atlas_coap_response_t resp_status,
     atlas_reputation_resp_parse(resp_payload, resp_payload_len);
     
     ATLAS_LOGGER_INFO("Sending feature reputation to data plane is COMPLETED!");
-    printf("Sending feature reputation to data plane is COMPLETED!\n");
 }
 
 static void
@@ -257,10 +250,8 @@ atlas_feature_reputation_handle(const uint8_t *feature, uint16_t length)
                                        cmd_buf, cmd_len, ATLAS_CLIENT_FEATURE_TIMEOUT_MS,
                                        feature_reputation_callback);
 
-    if (status != ATLAS_OK){
+    if (status != ATLAS_OK)
         ATLAS_LOGGER_ERROR("Error when sending feature request");
-        printf("Error when sending feature request\n");
-    }
 
     atlas_cmd_batch_free(cmd_batch);
 }
@@ -270,15 +261,11 @@ feedback_callback(const char *uri, atlas_coap_response_t resp_status,
                             const uint8_t *resp_payload, size_t resp_payload_len)
 {
     ATLAS_LOGGER_DEBUG("Feedback callback executed");
-    printf("Feedback callback executed\n");
 
-    if (resp_status != ATLAS_COAP_RESP_OK) {
+    if (resp_status != ATLAS_COAP_RESP_OK)
         ATLAS_LOGGER_ERROR("Error in sending the feedback");
-        printf("Error in sending the feedback\n");
-    } else {
+    else
         ATLAS_LOGGER_INFO("Sending feedback to gateway is COMPLETED!");
-        printf("Sending feedback to gateway is COMPLETED!\n");
-    }
 }
 
 static void
@@ -311,10 +298,8 @@ atlas_feature_feedback_handle(const uint8_t *feedback, uint16_t length)
                                        cmd_buf, cmd_len, ATLAS_CLIENT_FEATURE_TIMEOUT_MS,
                                        feedback_callback);
 
-    if (status != ATLAS_OK){
+    if (status != ATLAS_OK)
         ATLAS_LOGGER_ERROR("Error when sending feedback");
-        printf("Error when sending feedback\n");
-    }
 
     atlas_cmd_batch_free(cmd_batch);
 }

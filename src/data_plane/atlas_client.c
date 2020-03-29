@@ -95,7 +95,6 @@ send_identity_command(char **identity)
     status = atlas_cmd_batch_set_raw(cmd_batch, buf, bytes);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Corrupted command from atlas_client");
-        printf("Corrupted command from atlas_client\n");
         goto EXIT;
     }
 
@@ -379,7 +378,6 @@ atlas_reputation_request(atlas_sensor_t sensor_type, char **identity)
     status = atlas_cmd_batch_set_raw(cmd_batch, buf, bytes);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Corrupted command from atlas_client");
-        printf("Corrupted command from atlas_client\n");
         goto EXIT;
     }
 
