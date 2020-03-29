@@ -154,7 +154,7 @@ atlas_coap_server_sched_callback(int fd)
 { 
     ATLAS_LOGGER_DEBUG("Serving CoAP request...");
     
-    coap_run_once(ctx, COAP_RUN_NONBLOCK);
+    coap_io_process(ctx, COAP_RUN_NONBLOCK);
 } 
 
 static int
