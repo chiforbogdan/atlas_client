@@ -45,12 +45,6 @@ typedef enum _atlas_cmd_type
     /* Telemetry sysinfo procs command: payload is number of processes */
     ATLAS_CMD_TELEMETRY_SYSINFO_PROCS,
 
-    /* Telemetry sysinfo total high command: payload is total high memory size */
-    ATLAS_CMD_TELEMETRY_SYSINFO_TOTALHIGH,
-
-    /* Telemetry sysinfo free high command: payload is available high memory size */
-    ATLAS_CMD_TELEMETRY_SYSINFO_FREEHIGH,
-
     /* Telemetry sysinfo load 1 command: payload is 1 minute load average */
     ATLAS_CMD_TELEMETRY_SYSINFO_LOAD1,
 

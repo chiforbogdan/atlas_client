@@ -24,8 +24,6 @@
 #define ATLAS_SYSINFO_TOTALSWAP_PATH "gateway/telemetry/sysinfo/totalswap"
 #define ATLAS_SYSINFO_FREESWAP_PATH "gateway/telemetry/sysinfo/freeswap"
 #define ATLAS_SYSINFO_PROCS_PATH "gateway/telemetry/sysinfo/procs"
-#define ATLAS_SYSINFO_TOTALHIGH_PATH "gateway/telemetry/sysinfo/totalhigh"
-#define ATLAS_SYSINFO_FREEHIGH_PATH "gateway/telemetry/sysinfo/freehigh"
 #define ATLAS_SYSINFO_LOAD1_PATH "gateway/telemetry/sysinfo/load1"
 #define ATLAS_SYSINFO_LOAD5_PATH "gateway/telemetry/sysinfo/load5"
 #define ATLAS_SYSINFO_LOAD15_PATH "gateway/telemetry/sysinfo/load15"
@@ -357,84 +355,6 @@ atlas_telemetry_payload_procs(uint8_t **payload, uint16_t *payload_len,
 }
 
 static void
-atlas_telemetry_payload_totalhigh(uint8_t **payload, uint16_t *payload_len,
-                                  uint8_t use_threshold)
-{
-    atlas_cmd_batch_t *cmd_batch;
-    uint8_t *cmd_buf = NULL;
-    uint16_t cmd_len = 0;
-    const char *identity = atlas_identity_get();
-    struct sysinfo info;
-    char totalhigh[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
-
-    ATLAS_LOGGER_INFO("Get payload for sysinfo totalhigh telemetry feature");
-
-    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
-        ATLAS_LOGGER_ERROR("Sysinfo totalhigh telemetry feature does not support thresholds");
-	return;
-    }
-
-    if (sysinfo(&info) != 0) {
-        ATLAS_LOGGER_ERROR("Error in getting sysinfo totalhigh");
-        return;
-    }
-
-    sprintf(totalhigh, "%lu",info.totalhigh);
-
-    /* Add sysinfo totalhigh command */
-    cmd_batch = atlas_cmd_batch_new();
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_IDENTITY, strlen(identity), (uint8_t *)identity);
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_TELEMETRY_SYSINFO_TOTALHIGH, strlen(totalhigh), (uint8_t *)totalhigh);
-
-    atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-
-    *payload = malloc(cmd_len);
-    memcpy(*payload, cmd_buf, cmd_len);
-    *payload_len = cmd_len;
-
-    atlas_cmd_batch_free(cmd_batch);
-}
-
-static void
-atlas_telemetry_payload_freehigh(uint8_t **payload, uint16_t *payload_len,
-                                 uint8_t use_threshold)
-{
-    atlas_cmd_batch_t *cmd_batch;
-    uint8_t *cmd_buf = NULL;
-    uint16_t cmd_len = 0;
-    const char *identity = atlas_identity_get();
-    struct sysinfo info;
-    char freehigh[ATLAS_SYSINFO_FEATURE_MAX_LEN + 1] = { 0 };
-
-    ATLAS_LOGGER_INFO("Get payload for sysinfo freehigh telemetry feature");
-
-    if (use_threshold == ATLAS_TELEMETRY_USE_THRESHOLD) {
-        ATLAS_LOGGER_ERROR("Sysinfo freehigh telemetry feature does not support thresholds");
-	return;
-    }
-
-    if (sysinfo(&info) != 0) {
-        ATLAS_LOGGER_ERROR("Error in getting sysinfo freehigh");
-        return;
-    }
-
-    sprintf(freehigh, "%lu",info.freehigh);
-
-    /* Add sysinfo freehigh command */
-    cmd_batch = atlas_cmd_batch_new();
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_IDENTITY, strlen(identity), (uint8_t *)identity);
-    atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_TELEMETRY_SYSINFO_FREEHIGH, strlen(freehigh), (uint8_t *)freehigh);
-
-    atlas_cmd_batch_get_buf(cmd_batch, &cmd_buf, &cmd_len);
-
-    *payload = malloc(cmd_len);
-    memcpy(*payload, cmd_buf, cmd_len);
-    *payload_len = cmd_len;
-
-    atlas_cmd_batch_free(cmd_batch);
-}
-
-static void
 atlas_telemetry_payload_load1(uint8_t **payload, uint16_t *payload_len,
                               uint8_t use_threshold)
 {
@@ -661,13 +581,7 @@ atlas_telemetry_add_sysinfo()
     
     atlas_cfg_coap_get_uri(ATLAS_SYSINFO_PROCS_PATH, uri);
     atlas_telemetry_add(uri, atlas_telemetry_payload_procs);
-    
-    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_TOTALHIGH_PATH, uri);
-    atlas_telemetry_add(uri, atlas_telemetry_payload_totalhigh);
-    
-    atlas_cfg_coap_get_uri(ATLAS_SYSINFO_FREEHIGH_PATH, uri);
-    atlas_telemetry_add(uri, atlas_telemetry_payload_freehigh);
-    
+        
     atlas_cfg_coap_get_uri(ATLAS_SYSINFO_LOAD1_PATH, uri);
     atlas_telemetry_add(uri, atlas_telemetry_payload_load1);
     
@@ -692,7 +606,7 @@ atlas_telemetry_add_sysinfo()
         return;
     }
    
-   status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_FREERAM_PATH, ATLAS_COAP_METHOD_PUT,
+    status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_FREERAM_PATH, ATLAS_COAP_METHOD_PUT,
                                            atlas_push_alert_cb);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Cannot install sysinfo freeram push telemetry alert end-point");
@@ -720,28 +634,28 @@ atlas_telemetry_add_sysinfo()
         return;
     }
 
-   status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_FREESWAP_PATH, ATLAS_COAP_METHOD_PUT,
+    status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_FREESWAP_PATH, ATLAS_COAP_METHOD_PUT,
                                            atlas_push_alert_cb);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Cannot install sysinfo freeswap push telemetry alert end-point");
         return;
     }
 
-   status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_LOAD1_PATH, ATLAS_COAP_METHOD_PUT,
+    status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_LOAD1_PATH, ATLAS_COAP_METHOD_PUT,
                                            atlas_push_alert_cb);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Cannot install sysinfo load1 push telemetry alert end-point");
         return;
     }
 
-   status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_LOAD5_PATH, ATLAS_COAP_METHOD_PUT,
+    status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_LOAD5_PATH, ATLAS_COAP_METHOD_PUT,
                                            atlas_push_alert_cb);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Cannot install sysinfo load5 push telemetry alert end-point");
         return;
     }
    
-   status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_LOAD15_PATH, ATLAS_COAP_METHOD_PUT,
+    status = atlas_coap_server_add_resource(ATLAS_PUSH_ALERT_SYSINFO_LOAD15_PATH, ATLAS_COAP_METHOD_PUT,
                                            atlas_push_alert_cb);
     if (status != ATLAS_OK) {
         ATLAS_LOGGER_ERROR("Cannot install sysinfo load15 push telemetry alert end-point");
