@@ -172,7 +172,6 @@ send_statistics_command()
     /* Add average length of received packets */
     atlas_cmd_batch_add(cmd_batch, ATLAS_CMD_DATA_PLANE_PACKETS_AVG, sizeof(payload_avg), (uint8_t *)&payload_avg);
 
-    printf("TX: transmitted payload_samples %d payload_avg %d\n", payload_samples, payload_avg);
     /* Reset statistics */
     payload_samples = payload_total = payload_avg = 0;
     
