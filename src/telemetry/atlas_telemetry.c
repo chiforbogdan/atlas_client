@@ -138,6 +138,7 @@ atlas_telemetry_add(const char *uri, atlas_telemetry_payload_cb payload_cb)
 
     entry = (atlas_telemetry_t *) malloc(sizeof(atlas_telemetry_t));
     strncpy(entry->uri, uri, sizeof(entry->uri) - 1);
+    entry->uri[sizeof(entry->uri) - 1] = 0;
     entry->payload_cb = payload_cb;
     entry->push_id = -1;
     entry->threshold_id = -1;

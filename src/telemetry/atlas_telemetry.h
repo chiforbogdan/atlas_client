@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define ATLAS_TELEMETRY_URI_LEN        (64)
+#define ATLAS_TELEMETRY_URI_LEN        (256)
 #define ATLAS_TELEMETRY_USE_THRESHOLD  (1)
 #define ATLAS_TELEMETRY_SKIP_THRESHOLD (0)
 
