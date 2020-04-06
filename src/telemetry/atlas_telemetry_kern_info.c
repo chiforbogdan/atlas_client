@@ -66,9 +66,6 @@ atlas_telemetry_add_kern_info()
 {
     ATLAS_LOGGER_DEBUG("Add kernel info telemetry feature");
 
-    char uri[ATLAS_URI_MAX_LEN] = { 0 };
-
-    atlas_cfg_coap_get_uri(ATLAS_KERNEL_INFO_PATH, uri);
-    atlas_telemetry_add(uri, atlas_telemetry_payload_kern_info);
+    atlas_telemetry_add(ATLAS_KERNEL_INFO_PATH, atlas_telemetry_payload_kern_info);
 }
 

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <string.h>
 #include "coap/atlas_coap_server.h"
 #include "logger/atlas_logger.h"
 #include "scheduler/atlas_scheduler.h"
@@ -31,6 +32,10 @@ parse_options(int argc, char **argv)
     while((opt = getopt(argc, argv, ":h:p:i:l:")) != -1) {  
         switch(opt)  {
             case 'h':
+                if (optarg && strlen(optarg) > ATLAS_URI_HOSTNAME_MAX_LEN) {
+                    printf("Error: Hostname is too long (maximum hostname length is %d)\n", ATLAS_URI_HOSTNAME_MAX_LEN);
+                    exit(1);
+                }
                 if (atlas_cfg_set_hostname(optarg) != ATLAS_OK) {
                     print_usage();
                     exit(1);

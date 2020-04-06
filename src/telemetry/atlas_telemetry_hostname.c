@@ -74,11 +74,7 @@ void
 atlas_telemetry_add_hostname()
 {
     ATLAS_LOGGER_DEBUG("Add hostname telemetry feature");
-    
-    char uri[ATLAS_URI_MAX_LEN] = { 0 };
-    
-    atlas_cfg_coap_get_uri(ATLAS_HOSTNAME_PATH, uri);
 
-    atlas_telemetry_add(uri, atlas_telemetry_payload_hostname);
+    atlas_telemetry_add(ATLAS_HOSTNAME_PATH, atlas_telemetry_payload_hostname);
 }
 

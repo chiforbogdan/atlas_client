@@ -11,8 +11,8 @@
 
 typedef struct _atlas_telemetry
 {
-    /* Telemetry feature URI */
-    char uri[ATLAS_TELEMETRY_URI_LEN + 1];
+    /* Telemetry feature URI path */
+    char *uri_path;
 
     /* Telemetry callback for obtaining the feature payload */
     atlas_telemetry_payload_cb payload_cb;
@@ -86,7 +86,7 @@ telemetry_callback(const char *uri, atlas_coap_response_t resp_status,
 
     /* Try to send the request again */
     for (p = features_; p; p = p->next) {
-        if (!strcmp(p->uri, uri)) {
+        if (strstr(uri, p->uri_path)) {
             atlas_telemetry_push(p, ATLAS_TELEMETRY_SKIP_THRESHOLD);
             break;
         }
@@ -98,6 +98,7 @@ atlas_telemetry_push(const atlas_telemetry_t *feature, uint8_t use_threshold)
 {
     uint8_t *payload = NULL;
     uint16_t payload_len = 0;
+    char uri[ATLAS_URI_MAX_LEN] = { 0 };
     atlas_status_t status;
 
     ATLAS_LOGGER_DEBUG("Pushing telemetry feature...");
@@ -115,7 +116,9 @@ atlas_telemetry_push(const atlas_telemetry_t *feature, uint8_t use_threshold)
         return;
     } 
 
-    status = atlas_coap_client_request(feature->uri, ATLAS_COAP_METHOD_PUT,
+    /* Add packets_info telemetry features */
+    atlas_cfg_coap_get_uri(feature->uri_path, uri);
+    status = atlas_coap_client_request(uri, ATLAS_COAP_METHOD_PUT,
                                        payload, payload_len,
                                        ATLAS_CLIENT_TELEMETRY_FEATURE_TIMEOUT_MS,
                                        telemetry_callback);
@@ -127,18 +130,18 @@ atlas_telemetry_push(const atlas_telemetry_t *feature, uint8_t use_threshold)
 }
 
 void
-atlas_telemetry_add(const char *uri, atlas_telemetry_payload_cb payload_cb)
+atlas_telemetry_add(const char *uri_path, atlas_telemetry_payload_cb payload_cb)
 {
     atlas_telemetry_t *entry, *p;
 
-    if (!uri || !payload_cb)
+    if (!uri_path || !payload_cb)
         return;
     
     ATLAS_LOGGER_DEBUG("Add telemetry feature");
 
     entry = (atlas_telemetry_t *) malloc(sizeof(atlas_telemetry_t));
-    strncpy(entry->uri, uri, sizeof(entry->uri) - 1);
-    entry->uri[sizeof(entry->uri) - 1] = 0;
+    entry->uri_path = (char *) malloc(strlen(uri_path) + 1);
+    strcpy(entry->uri_path, uri_path);
     entry->payload_cb = payload_cb;
     entry->push_id = -1;
     entry->threshold_id = -1;
@@ -154,22 +157,23 @@ atlas_telemetry_add(const char *uri, atlas_telemetry_payload_cb payload_cb)
 }
  
 void
-atlas_telemetry_del(const char *uri)
+atlas_telemetry_del(const char *uri_path)
 {
     atlas_telemetry_t *p, *pp;
 
-    if (!uri)
+    if (!uri_path)
         return;
 
     ATLAS_LOGGER_DEBUG("Remove telemetry feature");
     
     for (p = features_; p; p = p->next) {
-        if (!strcmp(p->uri, uri)) {
+        if (!strcmp(p->uri_path, uri_path)) {
             if (p == features_)
                 features_ = p->next;
             else
                 pp->next = p->next;
-            
+           
+            free(p->uri_path); 
             free(p);
             break;
         }
@@ -189,17 +193,17 @@ atlas_telemetry_push_all()
 }
 
 void
-atlas_telemetry_push_set(const char *uri, uint16_t push_rate)
+atlas_telemetry_push_set(const char *uri_path, uint16_t push_rate)
 {
     atlas_telemetry_t *p;
 
-    if (!uri)
+    if (!uri_path)
         return;
 
     ATLAS_LOGGER_DEBUG("Set external push rate for telemetry feature");
 
     for (p = features_; p; p = p->next) {
-        if (!strcmp(p->uri, uri)) {
+        if (!strcmp(p->uri_path, uri_path)) {
             /* If push rate value is 0, then push the feature right away */
             if (!push_rate) {
                 atlas_telemetry_push(p, ATLAS_TELEMETRY_SKIP_THRESHOLD);
@@ -221,17 +225,17 @@ atlas_telemetry_push_set(const char *uri, uint16_t push_rate)
 }
 
 void
-atlas_telemetry_threshold_set(const char *uri, uint16_t scan_rate)
+atlas_telemetry_threshold_set(const char *uri_path, uint16_t scan_rate)
 {
     atlas_telemetry_t *p;
 
-    if (!uri || !scan_rate)
+    if (!uri_path || !scan_rate)
         return;
 
     ATLAS_LOGGER_DEBUG("Set internal scan rate for telemetry feature");
 
     for (p = features_; p; p = p->next) {
-        if (!strcmp(p->uri, uri)) {
+        if (!strcmp(p->uri_path, uri_path)) {
 	    /* Schedule alarm for internal scan */
             if (p->threshold_id >= 0)
                 atlas_alarm_cancel(p->threshold_id);

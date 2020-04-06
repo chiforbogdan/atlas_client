@@ -3,9 +3,10 @@
 
 #include "atlas_status.h"
 
-#define ATLAS_PORT_MAX_LEN (6)
-#define ATLAS_IP_MAX_LEN (16)
-#define ATLAS_URI_MAX_LEN (128)
+#define ATLAS_PORT_MAX_LEN         (6)
+#define ATLAS_IP_MAX_LEN           (16)
+#define ATLAS_URI_MAX_LEN          (256)
+#define ATLAS_URI_HOSTNAME_MAX_LEN (128)
 
 /**
 * @brief Set gateway hostname
