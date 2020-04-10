@@ -13,6 +13,9 @@ pkg_check_modules(UUID uuid REQUIRED)
 # OpenSSL dependency
 find_package(OpenSSL REQUIRED)
 
+# Add Data_plane project
+add_subdirectory("src/data_plane/" "./data_plane")
+
 include_directories(include)
 # Add CoAP headers
 include_directories(${COAP_INCLUDE_DIRS})

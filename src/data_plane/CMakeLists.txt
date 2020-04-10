@@ -7,7 +7,6 @@ find_package(Threads REQUIRED)
 # Atlas client files
 file(GLOB SOURCES  "*.c" "../logger/*.c" "../commands/*.c" )
 
-
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
