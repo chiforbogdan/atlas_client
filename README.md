@@ -45,14 +45,14 @@ Example:
 ----
 
 #### Authors
-ATLAS_CLIENT Security Component was developed by:
+ATLAS Client was developed by:
 * Bogdan-Cosmin Chifor
 * Stefan-Ciprian Arseni
 * Ioana Cismas
 * Mihai Coca
 * Mirabela Medvei
 
-The ATLAS project is sponsored by [UEFISCDI].
+ATLAS project is sponsored by [UEFISCDI].
 
 ----
 
