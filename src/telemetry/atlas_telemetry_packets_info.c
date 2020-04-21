@@ -104,8 +104,8 @@ atlas_push_alert_cb(const char *uri_path, const uint8_t *req_payload, size_t req
   
     if (!strcmp(uri_path, ATLAS_PUSH_ALERT_DATA_PLANE_PPM_PATH))
         atlas_telemetry_push_set(ATLAS_PACKETS_INFO_PACKETS_PER_MINUTE, push_rate);
-    else if (!strcmp(uri_path, ATLAS_PUSH_ALERT_DATA_PLANE_PKT_AVG_PATH)) 
-        atlas_telemetry_push_set(ATLAS_PUSH_ALERT_DATA_PLANE_PKT_AVG_PATH, push_rate);
+    else if (!strcmp(uri_path, ATLAS_PUSH_ALERT_DATA_PLANE_PKT_AVG_PATH))
+        atlas_telemetry_push_set(ATLAS_PACKETS_INFO_PACKETS_AVG, push_rate);
  
     return ATLAS_COAP_RESP_OK;
 }
