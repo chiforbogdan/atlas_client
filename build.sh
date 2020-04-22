@@ -7,7 +7,7 @@ mkdir build build/data_plane
 echo "******************* Step 1 finished! ********************"
 
 # Buildint project
-echo "******* Step 2. Building ATLAS_GATEWAY components *******"
+echo "******* Step 2. Building ATLAS_CLIENT components *******"
 cd build/
 cmake ..
 make
