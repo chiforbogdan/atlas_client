@@ -13,6 +13,7 @@
 #include "telemetry/atlas_telemetry_features.h"
 #include "utils/atlas_config.h"
 #include "data_plane_connector/atlas_data_plane_connector.h"
+#include "commandsExecute/atlas_command_execute.h"
 
 static void
 print_usage()
@@ -124,6 +125,9 @@ main(int argc, char **argv)
    
     /* Init telemetry features */
     atlas_telemetry_features_init();
+
+    /* Init command execution engine */
+    atlas_command_execute_init();
 
     /* Run scheduler main loop */
     atlas_sched_loop();
