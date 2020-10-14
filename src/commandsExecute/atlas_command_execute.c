@@ -18,6 +18,9 @@ atlas_execute_command_cb(const char *uri_path, const uint8_t *req_payload, size_
 
     status = atlas_alert_command_execution_parse(req_payload, req_payload_len);
     if (status != ATLAS_OK) {
+        if (status == ATLAS_DEFERRED_COMMAND_EXECUTION) {
+            ATLAS_LOGGER_DEBUG("Command execution alert end-point deferred an execution command");
+        }
         ATLAS_LOGGER_DEBUG("Command execution alert end-point encountered an error when parsing the command");
         return ATLAS_COAP_RESP_NOT_ACCEPTABLE_HERE;
     }

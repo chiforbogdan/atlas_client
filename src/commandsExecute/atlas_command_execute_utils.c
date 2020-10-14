@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "atlas_command_execute_utils.h"
 #include "atlas_command_execute_engine.h"
 #include "atlas_command_execute_types.h"
@@ -10,6 +11,10 @@
 #define ATLAS_CLIENT_COMMAND_EXECUTE_TIMEOUT_MS (3000)
 
 static atlas_cmd_exec_t *rcvdCmd = NULL;
+
+/* Flag for monitoring in progress commands. */
+/* TO DO: update if implementing a layered structure for execution commands. */
+static bool cmdInProgress = false;
 
 
 static void
@@ -30,6 +35,7 @@ static void
 command_execution_unknown_alarm_callback()
 {
     ATLAS_LOGGER_INFO("Unknown command execution alarm callback");
+    cmdInProgress = false;
     atlas_command_execute_unknown(rcvdCmd);
 }
 
@@ -39,6 +45,12 @@ atlas_alert_command_execution_parse(const uint8_t *buf, uint16_t buf_len)
     atlas_cmd_batch_t *cmd_batch;
     const atlas_cmd_t *cmd;
     atlas_status_t status = ATLAS_OK;
+
+    if (cmdInProgress) {
+        ATLAS_LOGGER_DEBUG("Command execution alert end-point deferred a command");
+        status = ATLAS_DEFERRED_COMMAND_EXECUTION;
+        return status;
+    }
 
     if (!buf || !buf_len)
         return ATLAS_INVALID_INPUT;
@@ -57,12 +69,14 @@ atlas_alert_command_execution_parse(const uint8_t *buf, uint16_t buf_len)
         if (cmd->type == ATLAS_CMD_DEVICE_RESTART) {            
             if (atlas_alarm_set(ATLAS_CLIENT_COMMAND_EXECUTE_TIMEOUT_MS, command_execution_restart_alarm_callback, 
                                 ATLAS_ALARM_RUN_ONCE) < 0)
-                ATLAS_LOGGER_ERROR("Error in scheduling a command execution alarm!");
+                ATLAS_LOGGER_ERROR("Error in scheduling a restart command execution alarm!");
+            cmdInProgress = true;
 	    break;
         } else if (cmd->type == ATLAS_CMD_DEVICE_SHUTDOWN) {            
             if (atlas_alarm_set(ATLAS_CLIENT_COMMAND_EXECUTE_TIMEOUT_MS, command_execution_shutdown_alarm_callback, 
                                 ATLAS_ALARM_RUN_ONCE) < 0)
-                ATLAS_LOGGER_ERROR("Error in scheduling a command execution alarm!");
+                ATLAS_LOGGER_ERROR("Error in scheduling a shutdown command execution alarm!");
+            cmdInProgress = true;
 	    break;
         } else if (cmd->type == ATLAS_CMD_DEVICE_UNKNOWN && cmd->length >= 0) {
             if (!rcvdCmd) 
@@ -73,7 +87,8 @@ atlas_alert_command_execution_parse(const uint8_t *buf, uint16_t buf_len)
             memset(rcvdCmd->value+cmd->length, 0, 1);
             if (atlas_alarm_set(ATLAS_CLIENT_COMMAND_EXECUTE_TIMEOUT_MS, command_execution_unknown_alarm_callback, 
                                 ATLAS_ALARM_RUN_ONCE) < 0)
-                ATLAS_LOGGER_ERROR("Error in scheduling a command execution alarm!");
+                ATLAS_LOGGER_ERROR("Error in scheduling an unknown command execution alarm!");
+            cmdInProgress = true;
 	    break;
         }
 
