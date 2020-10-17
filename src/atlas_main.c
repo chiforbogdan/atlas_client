@@ -13,7 +13,7 @@
 #include "telemetry/atlas_telemetry_features.h"
 #include "utils/atlas_config.h"
 #include "data_plane_connector/atlas_data_plane_connector.h"
-#include "commandsExecute/atlas_command_execute.h"
+#include "commands_execute/atlas_command_execute.h"
 
 static void
 print_usage()
