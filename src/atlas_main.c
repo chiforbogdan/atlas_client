@@ -93,6 +93,12 @@ main(int argc, char **argv)
 
     ATLAS_LOGGER_INFO("Starting ATLAS IoT client...");
 
+    /* Atlas client must be root in order to execute commands */
+    if (geteuid()) {
+        printf("ATLAS client must run as root in order to execute commands!\n");
+        return -1;        
+    }
+
     /* Init or generate identity */
     if (atlas_identity_init() != ATLAS_OK) {
         ATLAS_LOGGER_INFO("Cannot start client - identity error");
