@@ -630,7 +630,13 @@ parse_arguments(int argc, char** argv)
 } 
 
 int main(int argc, char *argv[])
-{ 
+{
+     /* Data plane must be started as root in order to communicate with ATLAS client, which is started as root */
+    if (geteuid()) {
+        printf("ATLAS data plane must run as root in order to communicate with ATLAS client!\n");
+        return -1;
+    }
+
     srand(time(0));
     
     parse_arguments(argc, argv);
