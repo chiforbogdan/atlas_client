@@ -22,7 +22,8 @@ sudo apt-get install -y git
 echo "******************* Step 1 finished! ********************"
 # __build Paho with support for C__
 echo "*** Step 2. Building Eclipse Paho with support for C ****"
-git clone https://github.com/eclipse/paho.mqtt.c.git
+# Original repo is here: git clone https://github.com/eclipse/paho.mqtt.c.git
+git clone https://github.com/chiforbogdan/paho.mqtt.c.git
 cd paho.mqtt.c
 git checkout v1.3.1
 cmake -Bbuild -H. -DPAHO_WITH_SSL=ON -DPAHO_ENABLE_TESTING=OFF
@@ -39,7 +40,8 @@ echo "*********************************************************"
 echo "***************** Adding suport for CoAP ****************"
 echo "*********************************************************"
 sudo apt-get install -y autotools-dev autoconf automake m4 libtool pkg-config
-git clone https://github.com/obgm/libcoap.git
+# Original repo is here: git clone https://github.com/obgm/libcoap.git
+git clone https://github.com/chiforbogdan/libcoap.git
 cd libcoap
 git checkout develop
 sudo sh ./autogen.sh
