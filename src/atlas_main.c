@@ -13,6 +13,7 @@
 #include "telemetry/atlas_telemetry_features.h"
 #include "utils/atlas_config.h"
 #include "data_plane_connector/atlas_data_plane_connector.h"
+#include "commands_execute/atlas_command_execute.h"
 
 static void
 print_usage()
@@ -92,6 +93,12 @@ main(int argc, char **argv)
 
     ATLAS_LOGGER_INFO("Starting ATLAS IoT client...");
 
+    /* Atlas client must be root in order to execute commands */
+    if (geteuid()) {
+        printf("ATLAS client must run as root in order to execute commands!\n");
+        return -1;        
+    }
+
     /* Init or generate identity */
     if (atlas_identity_init() != ATLAS_OK) {
         ATLAS_LOGGER_INFO("Cannot start client - identity error");
@@ -124,6 +131,9 @@ main(int argc, char **argv)
    
     /* Init telemetry features */
     atlas_telemetry_features_init();
+
+    /* Init command execution engine */
+    atlas_command_execute_init();
 
     /* Run scheduler main loop */
     atlas_sched_loop();

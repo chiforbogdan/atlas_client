@@ -237,7 +237,7 @@ coap_client_sched_callback(int fd)
     for (p = req_entry; p; p = p->next) {
         if (p->coap_fd == fd) {
 
-            coap_io_process(p->ctx, COAP_RUN_NONBLOCK);
+            coap_io_process(p->ctx, COAP_IO_NO_WAIT);
 
             /* If entry is dirty, then it can be deleted */
 	    if (p->dirty) {    
