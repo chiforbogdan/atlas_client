@@ -5,6 +5,7 @@ ATLAS consists in a 3-tier IoT security platform which offers the following modu
 * A lightweight software client which runs on the IoT device ([ATLAS_Client])
 * A gateway software which runs on the network edge and manages all the clients from the network ([ATLAS_Gateway])
 * A cloud platform which allows managing the gateways and the clients ([ATLAS_Cloud])
+* An Android management application which allows IoT command authorization (ATLAS_Android)
 
 ATLAS provides security management for a fleet of IoT devices and enables a reputation based Sensing-as-a-service platform. It also offers the capability to inspect the IoT device telemetry values and supports the CoAP lightweight protocol for the communication between the IoT device and the gateway.
 On the IoT data plane layer, ATLAS provides an API which can be integrated with a user application and offers the following capabilities:
@@ -92,4 +93,5 @@ See LICENSE file to read the full text.
 [ATLAS_Client]: https://github.com/chiforbogdan/atlas_client
 [ATLAS_Gateway]: https://github.com/chiforbogdan/atlas_gateway
 [ATLAS_Cloud]: https://github.com/chiforbogdan/atlas_cloud
+[ATLAS_Android]: https://github.com/chiforbogdan/atlas_android
 [UEFISCDI]: https://uefiscdi.gov.ro/
