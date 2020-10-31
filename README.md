@@ -36,7 +36,7 @@ Depending on the platform you are using, minor adjustments might be necessary to
 
 #### How to use it
 ```
-./atlas_client -h <ATLAS_GATEWAY_HOST> -p <TLAS_GATEWAY_PORT> -i <LOCAL_INTERFACE> -l <LOCAL_LISTEN_PORT>
+./atlas_client -h <ATLAS_GATEWAY_HOST> -p <ATLAS_GATEWAY_PORT> -i <LOCAL_INTERFACE> -l <LOCAL_LISTEN_PORT>
 ```
 
 Arguments:
